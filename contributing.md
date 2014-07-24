@@ -1,17 +1,11 @@
 Building/Contributing
 =====================
 
-Just as a heads up, building the project is actually as easy as getting the dependencies and running `go build` (assuming familiarity with [Go](https://golang.org/) of course).
+Just as a heads up, building the project is actually as easy as running `go build` (assuming familiarity with [Go](https://golang.org/) of course).
 
-## Installing the dependencies
+## Vendoring
 
-* go get github.com/gorilla/mux
-* go get code.google.com/p/gcfg
-* go get code.google.com/p/goauth2/oauth
-* go get github.com/google/go-github/github
-* go get github.com/marpaia/chef-golang
-* go get github.com/marpaia/graphite-golang
-* go get bitbucket.org/kardianos/osext
+All dependencies are vendored in using '[godep save -r](https://github.com/tools/godep)' so all imports are rewritten to their current, vendored location. I'm currently working on a tweak for goimports so it also supports using with vendored projects. More to come on that later on.
 
 ## Building Chef-Guard
 
