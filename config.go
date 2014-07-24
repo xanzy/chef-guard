@@ -23,8 +23,8 @@ import (
 	"reflect"
 	"strings"
 
-	"bitbucket.org/kardianos/osext"
-	"code.google.com/p/gcfg"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/bitbucket.org/kardianos/osext"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/gcfg"
 )
 
 type Config struct {

@@ -16,7 +16,7 @@
 
 package main
 
-import "github.com/marpaia/graphite-golang"
+import "github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/graphite-golang"
 
 var metric *graphite.Graphite
 

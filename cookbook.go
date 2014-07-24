@@ -37,7 +37,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/marpaia/chef-golang"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 )
 
 type Sandbox struct {

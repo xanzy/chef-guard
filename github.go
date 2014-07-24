@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/goauth2/oauth"
-	"github.com/google/go-github/github"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/goauth2/oauth"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/google/go-github/github"
 	"github.com/xanzy/chef-guard/multisyncer"
 )
 

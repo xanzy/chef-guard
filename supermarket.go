@@ -22,7 +22,7 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/marpaia/chef-golang"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 )
 
 func setupSMClient() (*chef.Chef, error) {
