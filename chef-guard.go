@@ -26,9 +26,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/google/go-github/github"
-	"github.com/gorilla/mux"
-	"github.com/marpaia/chef-golang"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/google/go-github/github"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 )
 
 // The ChefGuard struct holds all required info needed to process a request made through Chef-Guard

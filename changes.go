@@ -25,7 +25,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gorilla/mux"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
 )
 
 type changeDetails struct {

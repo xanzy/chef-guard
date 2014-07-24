@@ -1,5 +1,5 @@
-Kickstart info...
-=================
+Building/Contributing
+=====================
 
 Just as a heads up, building the project is actually as easy as getting the dependencies and running `go build` (assuming familiarity with [Go](https://golang.org/) of course).
 
@@ -21,7 +21,7 @@ I cannot make it any easier that just using this one command: `go build` in the 
 
   1. Fork the repository on Github
   2. Create a named feature branch
-  3. Write you change
+  3. Write your change
   4. Write tests for your change (if applicable)
   5. Run the tests, ensuring they all pass
   6. Submit a Pull Request
