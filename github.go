@@ -78,11 +78,11 @@ func (cg *ChefGuard) syncedGitUpdate(action string, body []byte) {
 	if ms == nil {
 		ms = multisyncer.New()
 	}
-	token := <-ms.GetToken(cg.ChangeDetails.Repo)
+	token := <-ms.GetToken(cg.Repo)
 	defer func() {
 		// Sleep 1 second to prevent rapid successive calls to the Github contents API (known Github bug)
 		time.Sleep(1 * time.Second)
-		ms.ReturnToken(cg.ChangeDetails.Repo) <- token
+		ms.ReturnToken(cg.Repo) <- token
 	}()
 	config, err := remarshalConfig(action, body)
 	if err != nil {
@@ -116,7 +116,7 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 	opts.Committer = &github.CommitAuthor{Name: &cg.User, Email: &mail}
 	opts.Content = config
 
-	file, _, resp, err := cg.gitClient.Repositories.GetContents(cfg.Default.GitOrganization, cg.ChangeDetails.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), nil)
+	file, _, resp, err := cg.gitClient.Repositories.GetContents(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), nil)
 	if resp != nil && resp.Response.StatusCode == http.StatusUnauthorized {
 		return nil, fmt.Errorf("The token configured for Github organization %s is not valid!", cfg.Default.GitOrganization)
 	}
@@ -129,7 +129,7 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 			} else {
 				msg := fmt.Sprintf("Config for %s %s created by Chef-Guard", cg.ChangeDetails.Item, strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
-				if r, _, err = cg.gitClient.Repositories.CreateFile(cfg.Default.GitOrganization, cg.ChangeDetails.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
+				if r, _, err = cg.gitClient.Repositories.CreateFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
 					return nil, err
 				}
 			}
@@ -142,13 +142,13 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 			if action == "DELETE" {
 				msg := fmt.Sprintf("Config for %s %s deleted by Chef-Guard", cg.ChangeDetails.Item, strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
-				if r, _, err = cg.gitClient.Repositories.DeleteFile(cfg.Default.GitOrganization, cg.ChangeDetails.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
+				if r, _, err = cg.gitClient.Repositories.DeleteFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
 					return nil, err
 				}
 			} else {
 				msg := fmt.Sprintf("Config for %s %s updated by Chef-Guard", cg.ChangeDetails.Item, strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
-				if r, _, err = cg.gitClient.Repositories.UpdateFile(cfg.Default.GitOrganization, cg.ChangeDetails.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
+				if r, _, err = cg.gitClient.Repositories.UpdateFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
 					return nil, err
 				}
 			}
@@ -176,8 +176,8 @@ func (cg *ChefGuard) mailChanges(file, sha, action string) error {
 	case "DELETE":
 		subject = fmt.Sprintf("[%s CHEF] deleted %s", strings.ToUpper(cg.Organization), file)
 	}
-	msg := createMessage(cg.ChangeDetails.Repo, *commit.Commit.Committer.Name, diff, subject)
-	err = mailDiff(cg.ChangeDetails.Repo, *commit.Commit.Committer.Email, msg)
+	msg := createMessage(cg.Repo, *commit.Commit.Committer.Name, diff, subject)
+	err = mailDiff(cg.Repo, *commit.Commit.Committer.Email, msg)
 	return err
 }
 
@@ -188,7 +188,7 @@ func (cg *ChefGuard) getDiff(sha string) (string, *github.RepositoryCommit, erro
 			return "", nil, fmt.Errorf("Failed to create Git client: %s", err)
 		}
 	}
-	commit, _, err := cg.gitClient.Repositories.GetCommit(cfg.Default.GitOrganization, cg.ChangeDetails.Repo, sha)
+	commit, _, err := cg.gitClient.Repositories.GetCommit(cfg.Default.GitOrganization, cg.Repo, sha)
 	if err != nil {
 		return "", nil, err
 	}

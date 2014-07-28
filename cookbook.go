@@ -37,6 +37,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 )
 
@@ -53,7 +54,7 @@ type SandboxItem struct {
 
 func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if getEffectiveConfig("Mode", getOrgFromRequest(r)).(string) == "silent" || r.Method == "DELETE" {
+		if getEffectiveConfig("Mode", getOrgFromRequest(r)).(string) == "silent" && getEffectiveConfig("CommitChanges", getOrgFromRequest(r)).(bool) == false {
 			p.ServeHTTP(w, r)
 			return
 		}
@@ -62,38 +63,44 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 			errorHandler(w, fmt.Sprintf("Failed to create a new ChefGuard structure: %s", err), http.StatusBadGateway)
 			return
 		}
-		body, err := dumpBody(r)
-		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
-			return
-		}
-		if err := json.Unmarshal(body, &cg.Cookbook); err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to unmarshal body %s: %s", string(body), err), http.StatusBadGateway)
-			return
-		}
-		if cg.Cookbook.Frozen {
-			if errCode, err := cg.checkCookbookFrozen(); err != nil {
-				errorHandler(w, err.Error(), errCode)
+		if r.Method != "DELETE" {
+			body, err := dumpBody(r)
+			if err != nil {
+				errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
 				return
 			}
-			cg.CookbookPath = path.Join(cfg.Default.Tempdir, fmt.Sprintf("%s-%s", r.Header.Get("X-Ops-Userid"), cg.Cookbook.Name))
-			if err := cg.processCookbookFiles(); err != nil {
-				errorHandler(w, err.Error(), http.StatusBadGateway)
+			if err := json.Unmarshal(body, &cg.Cookbook); err != nil {
+				errorHandler(w, fmt.Sprintf("Failed to unmarshal body %s: %s", string(body), err), http.StatusBadGateway)
 				return
 			}
-			defer func() {
-				if err := os.RemoveAll(cg.CookbookPath); err != nil {
-					WARNING.Printf("Failed to cleanup temp cookbook folder %s: %s", cg.CookbookPath, err)
+			if getEffectiveConfig("Mode", cg.Organization).(string) != "silent" && cg.Cookbook.Frozen {
+				if errCode, err := cg.checkCookbookFrozen(); err != nil {
+					errorHandler(w, err.Error(), errCode)
+					return
 				}
-			}()
-			if errCode, err := cg.validateCookbookStatus(); err != nil {
-				errorHandler(w, err.Error(), errCode)
-				return
+				cg.CookbookPath = path.Join(cfg.Default.Tempdir, fmt.Sprintf("%s-%s", r.Header.Get("X-Ops-Userid"), cg.Cookbook.Name))
+				if err := cg.processCookbookFiles(); err != nil {
+					errorHandler(w, err.Error(), http.StatusBadGateway)
+					return
+				}
+				defer func() {
+					if err := os.RemoveAll(cg.CookbookPath); err != nil {
+						WARNING.Printf("Failed to cleanup temp cookbook folder %s: %s", cg.CookbookPath, err)
+					}
+				}()
+				if errCode, err := cg.validateCookbookStatus(); err != nil {
+					errorHandler(w, err.Error(), errCode)
+					return
+				}
+				if errCode, err := cg.tagAndPublishCookbook(); err != nil {
+					errorHandler(w, err.Error(), errCode)
+					return
+				}
 			}
-			if errCode, err := cg.tagAndPublishCookbook(); err != nil {
-				errorHandler(w, err.Error(), errCode)
-				return
-			}
+		}
+		if getEffectiveConfig("CommitChanges", cg.Organization).(bool) {
+			details := cg.getCookbookChangeDetails(r)
+			go cg.syncedGitUpdate(r.Method, details)
 		}
 		go metric.SimpleSend("chef-guard.success", "1")
 		p.ServeHTTP(w, r)
@@ -147,23 +154,6 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	return nil
 }
 
-func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
-	if cg.SourceCookbook.artifact == false {
-		if cg.SourceCookbook.tagged == false {
-			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
-			if err := tagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
-				return http.StatusBadGateway, err
-			}
-		}
-		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) {
-			if err := cg.publishCookbook(); err != nil {
-				return http.StatusBadGateway, err
-			}
-		}
-	}
-	return 0, nil
-}
-
 func (cg *ChefGuard) getOrganizationID() error {
 	resp, err := cg.chefClient.Post("sandboxes", "application/json", nil, strings.NewReader(`{"checksums":{"00000000000000000000000000000000":null}}`))
 	if err != nil {
@@ -202,6 +192,38 @@ func (cg *ChefGuard) getAllCookbookFiles() []struct{ chef.CookbookItem } {
 	allFiles = append(allFiles, cg.Cookbook.Templates...)
 	allFiles = append(allFiles, cg.Cookbook.RootFiles...)
 	return allFiles
+}
+
+func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
+	if cg.SourceCookbook.artifact == false {
+		if cg.SourceCookbook.tagged == false {
+			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
+			if err := tagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
+				return http.StatusBadGateway, err
+			}
+		}
+		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) {
+			if err := cg.publishCookbook(); err != nil {
+				return http.StatusBadGateway, err
+			}
+		}
+	}
+	return 0, nil
+}
+
+func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
+	v := mux.Vars(r)
+	cg.ChangeDetails = &changeDetails{Item: fmt.Sprintf("%s-%s", v["name"], v["version"]), Type: v["type"]}
+	frozen := false
+	if cg.Cookbook != nil {
+		frozen = cg.Cookbook.Frozen
+	}
+	source := "N/A (only applicable when --freeze is used)"
+	if cg.SourceCookbook != nil {
+		source = cg.SourceCookbook.DownloadURL.String()
+	}
+	details := fmt.Sprintf("{\"name\":\"%s\",\"version\":\"%s\",\"frozen\":%t,\"forcedupload\":%t,\"source\":\"%s\"}", v["name"], v["version"], frozen, cg.ForcedUpload, source)
+	return []byte(details)
 }
 
 func downloadCookbookFile(orgID, checksum string) ([]byte, error) {

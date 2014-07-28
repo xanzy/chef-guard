@@ -55,6 +55,12 @@ func newChefGuard(r *http.Request) (*ChefGuard, error) {
 		Organization: getOrgFromRequest(r),
 		ForcedUpload: dropForce(r),
 	}
+	// Set the repo dependend on the Organization (could become a configurable in the future)
+	if cg.Organization != "" {
+		cg.Repo = cg.Organization
+	} else {
+		cg.Repo = "config"
+	}
 	// Initialize map for the file hashes
 	cg.FileHashes = make(map[string][16]byte)
 	// Setup chefClient
@@ -97,13 +103,13 @@ func main() {
 		rtr.Path("/organizations/{org}/{type:data}/{bag}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/organizations/{org}/{type:environments|nodes|roles}").HandlerFunc(processChange(p)).Methods("POST")
 		rtr.Path("/organizations/{org}/{type:environments|nodes|roles}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
-		rtr.PathPrefix("/organizations/{org}/cookbooks/").HandlerFunc(processCookbook(p)).Methods("PUT", "DELETE")
+		rtr.Path("/organizations/{org}/{type:cookbooks}/{name}/{version}").HandlerFunc(processCookbook(p)).Methods("PUT", "DELETE")
 	} else {
 		rtr.Path("/{type:data}/{bag}").HandlerFunc(processChange(p)).Methods("POST")
 		rtr.Path("/{type:data}/{bag}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/{type:environments|nodes|roles}").HandlerFunc(processChange(p)).Methods("POST")
 		rtr.Path("/{type:environments|nodes|roles}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
-		rtr.PathPrefix("/cookbooks/").HandlerFunc(processCookbook(p)).Methods("PUT", "DELETE")
+		rtr.Path("/{type:cookbooks}/{name}/{version}").HandlerFunc(processCookbook(p)).Methods("PUT", "DELETE")
 	}
 	rtr.NotFoundHandler = p
 	http.Handle("/", rtr)
