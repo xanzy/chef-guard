@@ -29,7 +29,6 @@ import (
 )
 
 type changeDetails struct {
-	Repo string
 	Item string
 	Type string
 }
@@ -112,12 +111,6 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 func getChangeDetails(r *http.Request, body []byte) (*changeDetails, error) {
 	cd := &changeDetails{}
 	v := mux.Vars(r)
-	// Check if we have an org and use that as repo name, else set the repo to "config"
-	if _, found := v["org"]; found {
-		cd.Repo = v["org"]
-	} else {
-		cd.Repo = "config"
-	}
 	// Resolve the name either directly or by unmarshalling the request body
 	if _, found := v["name"]; found {
 		cd.Item = v["name"]
