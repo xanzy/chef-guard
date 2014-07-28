@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 )
@@ -35,6 +37,9 @@ func setupSMClient() (*chef.Chef, error) {
 }
 
 func (cg *ChefGuard) publishCookbook() error {
+	if blackListed(cg.Organization, cg.Cookbook.Name) {
+		return nil
+	}
 	var err error
 	if cg.smClient == nil {
 		if cg.smClient, err = setupSMClient(); err != nil {
@@ -66,4 +71,20 @@ func (cg *ChefGuard) publishCookbook() error {
 		return fmt.Errorf("Failed to upload %s to the Supermarket: %s", cg.Cookbook.Name, err)
 	}
 	return nil
+}
+
+func blackListed(org, cookbook string) bool {
+	blacklist := cfg.Default.Blacklist
+	custBL := getEffectiveConfig("Blacklist", org)
+	if blacklist != custBL {
+		blacklist = fmt.Sprintf("%s|%s", blacklist, custBL)
+	}
+	rgx := strings.Split(blacklist, "|")
+	for _, r := range rgx {
+		re, _ := regexp.Compile(r)
+		if re.MatchString(cookbook) {
+			return true
+		}
+	}
+	return false
 }

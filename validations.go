@@ -90,7 +90,7 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 			return errCode, err
 		}
 	}
-	sc, errCode, err := cg.searchSourceCookbook()
+	errCode, err := cg.searchSourceCookbook()
 	if err != nil {
 		if errCode == http.StatusPreconditionFailed {
 			err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
@@ -99,14 +99,14 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 		}
 		return errCode, err
 	}
-	if sc.artifact == false {
+	if cg.SourceCookbook.artifact == false {
 		if errCode, err := cg.executeChecks(); err != nil {
 			return errCode, err
 		}
 	}
-	if errCode, err := cg.compareCookbooks(sc); err != nil {
+	if errCode, err := cg.compareCookbooks(); err != nil {
 		if errCode == http.StatusPreconditionFailed {
-			switch sc.LocationType {
+			switch cg.SourceCookbook.LocationType {
 			case "opscode":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
 					"%s\n\n"+
@@ -129,25 +129,7 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 			return errCode, err
 		}
 	}
-	if err := cg.tagAndPublishCookbook(sc); err != nil {
-		return http.StatusBadGateway, err
-	}
 	return 0, nil
-}
-
-func (cg *ChefGuard) tagAndPublishCookbook(sc *SourceCookbook) error {
-	if sc.artifact == false {
-		if sc.tagged == false {
-			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
-			if err := tagCookbookRepo(sc.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
-				return err
-			}
-		}
-		if err := cg.publishCookbook(); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
@@ -192,8 +174,8 @@ func (cg *ChefGuard) cookbookFrozen(name, version string) (bool, error) {
 	return cb.Frozen, nil
 }
 
-func (cg *ChefGuard) compareCookbooks(sc *SourceCookbook) (int, error) {
-	sh, err := getSourceFileHashes(sc)
+func (cg *ChefGuard) compareCookbooks() (int, error) {
+	sh, err := getSourceFileHashes(cg.SourceCookbook)
 	if err != nil {
 		return http.StatusBadGateway, err
 	}
@@ -227,24 +209,25 @@ func (cg *ChefGuard) compareCookbooks(sc *SourceCookbook) (int, error) {
 	return 0, nil
 }
 
-func (cg *ChefGuard) searchSourceCookbook() (*SourceCookbook, int, error) {
-	sc, err := searchBerksAPI(cg.Cookbook.Name, cg.Cookbook.Version)
+func (cg *ChefGuard) searchSourceCookbook() (int, error) {
+	var err error
+	cg.SourceCookbook, err = searchBerksAPI(cg.Cookbook.Name, cg.Cookbook.Version)
 	if err != nil {
-		return nil, http.StatusBadGateway, err
+		return http.StatusBadGateway, err
 	}
-	if sc != nil {
-		return sc, 0, nil
+	if cg.SourceCookbook != nil {
+		return 0, nil
 	}
 	if getEffectiveConfig("SearchGithub", cg.Organization).(bool) {
-		sc, err := searchGithub(cg.Organization, cg.Cookbook.Name, cg.Cookbook.Version)
+		cg.SourceCookbook, err = searchGithub(cg.Organization, cg.Cookbook.Name, cg.Cookbook.Version)
 		if err != nil {
-			return nil, http.StatusBadGateway, err
+			return http.StatusBadGateway, err
 		}
-		if sc != nil {
-			return sc, 0, nil
+		if cg.SourceCookbook != nil {
+			return 0, nil
 		}
 	}
-	return nil, http.StatusPreconditionFailed, fmt.Errorf("Failed to locate cookbook %s!", cg.Cookbook.Name)
+	return http.StatusPreconditionFailed, fmt.Errorf("Failed to locate cookbook %s!", cg.Cookbook.Name)
 }
 
 func searchBerksAPI(name, version string) (*SourceCookbook, error) {

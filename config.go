@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/bitbucket.org/kardianos/osext"
@@ -42,6 +43,7 @@ type Config struct {
 		MailChanges     bool
 		SearchGithub    bool
 		PublishCookbook bool
+		Blacklist       string
 		GitOrganization string
 		GitCookbookOrg  []string
 	}
@@ -56,6 +58,7 @@ type Config struct {
 		MailChanges     *bool
 		SearchGithub    *bool
 		PublishCookbook *bool
+		Blacklist       *string
 		GitCookbookOrg  *string
 	}
 	Chef struct {
@@ -111,6 +114,9 @@ func loadConfig() error {
 	if err := verifyGithubTokens(); err != nil {
 		return err
 	}
+	if err := verifyBlackLists(); err != nil {
+		return err
+	}
 	return parsePaths(path.Dir(exe))
 }
 
@@ -118,6 +124,26 @@ func verifyGithubTokens() error {
 	for k, v := range cfg.Github {
 		if v.Token == "" {
 			return fmt.Errorf("No token found for Github organization %s! All configured organizations need to have a valid token.", k)
+		}
+	}
+	return nil
+}
+
+func verifyBlackLists() error {
+	rgx := strings.Split(cfg.Default.Blacklist, "|")
+	for _, r := range rgx {
+		if _, err := regexp.Compile(r); err != nil {
+			return fmt.Errorf("The Default blacklist contains a bad regex: %s", err)
+		}
+	}
+	for k, v := range cfg.Customer {
+		if v.Blacklist != nil {
+			rgx := strings.Split(*v.Blacklist, "|")
+			for _, r := range rgx {
+				if _, err := regexp.Compile(r); err != nil {
+					return fmt.Errorf("The blacklist for customer %s contains a bad regex: %s", k, err)
+				}
+			}
 		}
 	}
 	return nil

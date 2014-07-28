@@ -42,6 +42,7 @@ type ChefGuard struct {
 	OrganizationID *string
 	Cookbook       *chef.CookbookVersion
 	CookbookPath   string
+	SourceCookbook *SourceCookbook
 	ChangeDetails  *changeDetails
 	ForcedUpload   bool
 	FileHashes     map[string][16]byte

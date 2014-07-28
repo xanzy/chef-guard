@@ -90,6 +90,10 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 				errorHandler(w, err.Error(), errCode)
 				return
 			}
+			if errCode, err := cg.tagAndPublishCookbook(); err != nil {
+				errorHandler(w, err.Error(), errCode)
+				return
+			}
 		}
 		go metric.SimpleSend("chef-guard.success", "1")
 		p.ServeHTTP(w, r)
@@ -141,6 +145,23 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	}
 	cg.TarFile = buf.Bytes()
 	return nil
+}
+
+func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
+	if cg.SourceCookbook.artifact == false {
+		if cg.SourceCookbook.tagged == false {
+			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
+			if err := tagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
+				return http.StatusBadGateway, err
+			}
+		}
+		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) {
+			if err := cg.publishCookbook(); err != nil {
+				return http.StatusBadGateway, err
+			}
+		}
+	}
+	return 0, nil
 }
 
 func (cg *ChefGuard) getOrganizationID() error {

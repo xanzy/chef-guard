@@ -267,9 +267,7 @@ func (chef *Chef) Post(endpoint string, contentType string, params map[string]st
 	}
 
 	request, err := http.NewRequest("POST", query, body)
-	if contentType != "" {
-		request.Header.Set("Content-Type", contentType)
-	}
+	request.Header.Set("Content-Type", contentType)
 	return chef.makeRequest(request)
 }
 
