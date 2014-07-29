@@ -218,7 +218,7 @@ func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 	if cg.Cookbook != nil {
 		frozen = cg.Cookbook.Frozen
 	}
-	source := "N/A (only applicable when --freeze is used)"
+	source := "N/A"
 	if cg.SourceCookbook != nil {
 		source = cg.SourceCookbook.DownloadURL.String()
 	}

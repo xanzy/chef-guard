@@ -109,22 +109,22 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 			switch cg.SourceCookbook.LocationType {
 			case "opscode":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
-					"%s\n\n"+
+					"%s\nSource: %s\n\n"+
 					"Make sure you are using an unchanged community version\n"+
 					"or, if you really need to change something, make a fork to\n"+
 					"https://github.com and create a pull request back to the\n"+
 					"community cookbook before trying to upload the cookbook again.\n"+
-					"=====================================\n", err)
+					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
 			case "github":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
-					"%s\n\n"+
+					"%s\nSource: %s\n\n"+
 					"Make sure all your changes are merged into the central\n"+
 					"repositories before trying to upload the cookbook again.\n"+
-					"=====================================\n", err)
+					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
 			default:
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
-					"%s\n"+
-					"=====================================\n", err)
+					"%s\nSource: %s\n"+
+					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
 			}
 			return errCode, err
 		}

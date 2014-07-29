@@ -26,14 +26,14 @@ import (
 func (cg *ChefGuard) executeChecks() (int, error) {
 	if cfg.Tests.Foodcritic != "" {
 		if errCode, err := runFoodcritic(cg.CookbookPath); err != nil {
-			if errCode == http.StatusBadGateway || cg.continueAfterFailedCheck("foodcritic") {
+			if errCode == http.StatusBadGateway || cg.continueAfterFailedCheck("foodcritic") == false {
 				return errCode, err
 			}
 		}
 	}
 	if cfg.Tests.Rubocop != "" {
 		if errCode, err := runRubocop(cg.CookbookPath); err != nil {
-			if errCode == http.StatusBadGateway || cg.continueAfterFailedCheck("rubocop") {
+			if errCode == http.StatusBadGateway || cg.continueAfterFailedCheck("rubocop") == false {
 				return errCode, err
 			}
 		}

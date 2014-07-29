@@ -89,14 +89,14 @@ type Config struct {
 		Foodcritic string
 		Rubocop    string
 	}
+	Graphite struct {
+		Server string
+		Port   int
+	}
 	Github map[string]*struct {
 		ServerURL   string
 		SSLNoVerify bool
 		Token       string
-	}
-	Graphite struct {
-		Server string
-		Port   int
 	}
 }
 
@@ -108,7 +108,8 @@ func loadConfig() error {
 		return fmt.Errorf("Failed to get path of %s: %s", path.Base(os.Args[0]), err)
 	}
 	strings.TrimSuffix(exe, path.Ext(exe))
-	if err := gcfg.ReadFileInto(&cfg, exe+".conf"); err != nil {
+	var tmpConfig Config
+	if err := gcfg.ReadFileInto(&tmpConfig, exe+".conf"); err != nil {
 		return fmt.Errorf("Failed to parse config file '%s': %s", exe+".conf", err)
 	}
 	if err := verifyGithubTokens(); err != nil {
@@ -117,7 +118,11 @@ func loadConfig() error {
 	if err := verifyBlackLists(); err != nil {
 		return err
 	}
-	return parsePaths(path.Dir(exe))
+	if err := parsePaths(path.Dir(exe)); err != nil {
+		return err
+	}
+	cfg = tmpConfig
+	return nil
 }
 
 func verifyGithubTokens() error {
