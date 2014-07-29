@@ -121,7 +121,7 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 		return nil, fmt.Errorf("The token configured for Github organization %s is not valid!", cfg.Default.GitOrganization)
 	}
 	// Sleep 1 second to prevent rapid successive calls to the Github contents API (known Github bug)
-	//time.Sleep(1 * time.Second) // This one may not be needed anymore since Go 1.3, let's test it...
+	time.Sleep(1 * time.Second)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusNotFound {
 			if action == "DELETE" {

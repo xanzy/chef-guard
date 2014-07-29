@@ -353,11 +353,10 @@ func calcBodyHash(r *http.Request) (string, error) {
 }
 
 // read a file from a multipart/form-data request body
-// and return the first 16384 bytes as a string needed
-// to caculate the body hash
+// and return it as a string needed to caculate the body hash
 func readFileFromRequest(r *http.Request, boundary string) (string, error) {
 	mr := multipart.NewReader(r.Body, boundary)
-	form, err := mr.ReadForm(16384)
+	form, err := mr.ReadForm(1048576)
 	if err != nil {
 		return "", err
 	}
@@ -371,11 +370,6 @@ func readFileFromRequest(r *http.Request, boundary string) (string, error) {
 	buf, err := ioutil.ReadAll(file)
 	if err != nil {
 		return "", err
-	}
-	// currently only the first 16384 bytes are used to calculate
-	// the content hash, so limit the read to that number
-	if len(buf) > 16384 {
-		return string(buf[:16384]), nil
 	}
 	return string(buf), nil
 }

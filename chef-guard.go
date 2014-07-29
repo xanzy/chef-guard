@@ -115,7 +115,7 @@ func main() {
 	http.Handle("/", rtr)
 
 	// Start the server
-	startExitHandler()
+	startSignalHandler()
 	err = http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Default.Listen, cfg.Chef.ErchefPort), nil)
 	if err != nil {
 		e := fmt.Errorf("Failed to start Chef-Guard server on port %d: %s", cfg.Chef.ErchefPort, err)
@@ -124,14 +124,26 @@ func main() {
 	}
 }
 
-func startExitHandler() {
+func startSignalHandler() {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		for _ = range c {
-			fmt.Println("Waiting for all connections to end before stopping the server...")
-			INFO.Println("Server stopped...")
-			os.Exit(0)
+		for s := range c {
+			switch s {
+			case syscall.SIGHUP:
+				if err := loadConfig(); err != nil {
+					WARNING.Printf("Could not reload configuration: %s", err)
+					log.Printf("Could not reload configuration: %s", err)
+				} else {
+					INFO.Println("Successfully reloaded configuration!")
+					log.Println("Successfully reloaded configuration!")
+				}
+			default:
+				// The actual implementation to let connections dry up, still needs to be done!
+				fmt.Println("Waiting for all connections to end before stopping the server...")
+				INFO.Println("Server stopped...")
+				os.Exit(0)
+			}
 		}
 	}()
 }
