@@ -198,8 +198,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 	if len(sh) > 0 {
 		left := []string{}
 		for file, _ := range sh {
-			// This needs better code to check additional files!
-			if file != "metadata.json" {
+			if file != "metadata.json" && file != "metadata.rb" {
 				left = append(left, file)
 			}
 		}
@@ -210,11 +209,10 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 	return 0, nil
 }
 
-func (cg *ChefGuard) searchSourceCookbook() (int, error) {
-	var err error
-	cg.SourceCookbook, err = searchBerksAPI(cg.Cookbook.Name, cg.Cookbook.Version)
+func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
+	cg.SourceCookbook, errCode, err = searchBerksAPI(cg.Cookbook.Name, cg.Cookbook.Version)
 	if err != nil {
-		return http.StatusBadGateway, err
+		return errCode, err
 	}
 	if cg.SourceCookbook != nil {
 		return 0, nil
@@ -231,26 +229,26 @@ func (cg *ChefGuard) searchSourceCookbook() (int, error) {
 	return http.StatusPreconditionFailed, fmt.Errorf("Failed to locate cookbook %s!", cg.Cookbook.Name)
 }
 
-func searchBerksAPI(name, version string) (*SourceCookbook, error) {
+func searchBerksAPI(name, version string) (*SourceCookbook, int, error) {
 	u, err := url.Parse(fmt.Sprintf("%s/%s", cfg.BerksAPI.ServerURL, "universe"))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse the Berks API URL %s: %s", cfg.BerksAPI.ServerURL, err)
+		return nil, http.StatusBadGateway, fmt.Errorf("Failed to parse the Berks API URL %s: %s", cfg.BerksAPI.ServerURL, err)
 	}
 	resp, err := http.Get(u.String())
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get cookbook list from %s: %s", u.String(), err)
+		return nil, http.StatusBadGateway, fmt.Errorf("Failed to get cookbook list from %s: %s", u.String(), err)
 	}
 	defer resp.Body.Close()
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
-		return nil, fmt.Errorf("Failed to get cookbook list from %s: %s", u.String(), err)
+		return nil, http.StatusBadGateway, fmt.Errorf("Failed to get cookbook list from %s: %s", u.String(), err)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read the response body from %v: %s", resp, err)
+		return nil, http.StatusBadGateway, fmt.Errorf("Failed to read the response body from %v: %s", resp, err)
 	}
 	results := make(BerksResult)
 	if err := json.Unmarshal(body, &results); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
+		return nil, http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
 	}
 	if cb, exists := results[name]; exists {
 		if sc, exists := cb[version]; exists {
@@ -258,14 +256,18 @@ func searchBerksAPI(name, version string) (*SourceCookbook, error) {
 			if sc.LocationType == "opscode" {
 				u, err := communityDownloadUrl(sc.LocationPath, name, version)
 				if err != nil {
-					return nil, err
+					return nil, http.StatusBadGateway, err
 				}
 				sc.DownloadURL = u
-				return sc, nil
+				return sc, 0, nil
+			}
+		} else {
+			if isCommunityCookbook(cb) {
+				return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload a non-existing version of a community\ncookbook! Make sure you are using an existing community version.")
 			}
 		}
 	}
-	return nil, nil
+	return nil, 0, nil
 }
 
 func communityDownloadUrl(path, name, version string) (*url.URL, error) {
@@ -294,6 +296,19 @@ func communityDownloadUrl(path, name, version string) (*url.URL, error) {
 		return nil, fmt.Errorf("Failed to parse the cookbook download URL %s: %s", sc.File, err)
 	}
 	return u, nil
+}
+
+func isCommunityCookbook(cb map[string]*SourceCookbook) bool {
+	var sc *SourceCookbook
+	for _, sc = range cb {
+		break
+	}
+	if sc.LocationType == "opscode" {
+		if sc.EndpointPriority == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func searchGithub(org, name, version string) (*SourceCookbook, error) {
