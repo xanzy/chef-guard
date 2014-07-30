@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"crypto/md5"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -331,7 +332,11 @@ func searchGithub(org, name, version string) (*SourceCookbook, error) {
 }
 
 func getSourceFileHashes(sc *SourceCookbook) (map[string][16]byte, error) {
-	resp, err := http.Get(sc.DownloadURL.String())
+	client, err := newDownloadClient(sc)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create a new download client: %s", err)
+	}
+	resp, err := client.Get(sc.DownloadURL.String())
 	if err != nil {
 		return nil, fmt.Errorf("Failed to download the cookbook from %s: %s", sc.DownloadURL.String(), err)
 	}
@@ -366,6 +371,19 @@ func getSourceFileHashes(sc *SourceCookbook) (map[string][16]byte, error) {
 		}
 	}
 	return files, nil
+}
+
+func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
+	if sc.LocationType != "github" {
+		return http.DefaultClient, nil
+	}
+	if _, found := cfg.Github[sc.gitHubOrg]; found == false {
+		return nil, fmt.Errorf("No Github config specified for organization: %s!", sc.gitHubOrg)
+	}
+	t := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Github[sc.gitHubOrg].SSLNoVerify},
+	}
+	return &http.Client{Transport: t}, nil
 }
 
 func parseCookbookVersions(constrains map[string]string) map[string][]string {
