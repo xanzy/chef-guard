@@ -126,8 +126,8 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 					"%s\nSource: %s\n"+
 					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
 			}
-			return errCode, err
 		}
+		return errCode, err
 	}
 	return 0, nil
 }
