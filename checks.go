@@ -53,7 +53,7 @@ func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 }
 
 func runFoodcritic(cookbookPath string) (int, error) {
-	cmd := exec.Command(cfg.Tests.Foodcritic, "-B", cookbookPath)
+	cmd := exec.Command(cfg.Tests.Foodcritic, "-t ~FC031 -t ~FC045 -B", cookbookPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return http.StatusBadGateway, fmt.Errorf("Failed to execute foodcritic tests: %s", err)
