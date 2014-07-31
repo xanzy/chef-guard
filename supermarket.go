@@ -77,11 +77,11 @@ func blackListed(org, cookbook string) bool {
 	blacklist := cfg.Default.Blacklist
 	custBL := getEffectiveConfig("Blacklist", org)
 	if blacklist != custBL {
-		blacklist = fmt.Sprintf("%s|%s", blacklist, custBL)
+		blacklist = fmt.Sprintf("%s,%s", blacklist, custBL)
 	}
-	rgx := strings.Split(blacklist, "|")
+	rgx := strings.Split(blacklist, ",")
 	for _, r := range rgx {
-		re, _ := regexp.Compile(r)
+		re, _ := regexp.Compile(strings.TrimSpace(r))
 		if re.MatchString(cookbook) {
 			return true
 		}

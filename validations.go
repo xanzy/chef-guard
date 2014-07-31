@@ -108,7 +108,7 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 	if errCode, err := cg.compareCookbooks(); err != nil {
 		if errCode == http.StatusPreconditionFailed {
 			switch cg.SourceCookbook.LocationType {
-			case "opscode":
+			case "supermarket":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
 					"%s\nSource: %s\n\n"+
 					"Make sure you are using an unchanged community version\n"+
@@ -154,6 +154,9 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, error) {
 	for name, versions := range constrains {
 		for _, version := range versions {
+			if version == "0.0.0" {
+				continue
+			}
 			if frozen, err := cg.cookbookFrozen(name, version); err != nil {
 				return http.StatusBadGateway, err
 			} else if frozen == false {
@@ -253,7 +256,7 @@ func searchBerksAPI(name, version string) (*SourceCookbook, int, error) {
 	if cb, exists := results[name]; exists {
 		if sc, exists := cb[version]; exists {
 			sc.artifact = true
-			if sc.LocationType == "opscode" {
+			if sc.LocationType == "supermarket" {
 				u, err := communityDownloadUrl(sc.LocationPath, name, version)
 				if err != nil {
 					return nil, http.StatusBadGateway, err
@@ -303,7 +306,7 @@ func isCommunityCookbook(cb map[string]*SourceCookbook) bool {
 	for _, sc = range cb {
 		break
 	}
-	if sc.LocationType == "opscode" {
+	if sc.LocationType == "supermarket" {
 		if sc.EndpointPriority == 0 {
 			return true
 		}
@@ -312,35 +315,26 @@ func isCommunityCookbook(cb map[string]*SourceCookbook) bool {
 }
 
 func searchGithub(org, name, version string) (*SourceCookbook, error) {
-	sc := &SourceCookbook{LocationType: "github"}
-	for _, gitHubOrg := range cfg.Default.GitCookbookOrg {
-		link, tagged, err := searchCookbookRepo(gitHubOrg, name, fmt.Sprintf("v%s", version))
+	orgList := cfg.Default.GitCookbookOrgs
+	custOrgList := getEffectiveConfig("GitCookbookOrgs", org)
+	if orgList != custOrgList {
+		orgList = fmt.Sprintf("%s,%s", orgList, custOrgList)
+	}
+	gitOrgs := strings.Split(orgList, ",")
+
+	for _, gitOrg := range gitOrgs {
+		gitOrg = strings.TrimSpace(gitOrg)
+		link, tagged, err := searchCookbookRepo(gitOrg, name, fmt.Sprintf("v%s", version))
 		if err != nil {
 			return nil, err
 		}
 		if link != nil {
+			sc := &SourceCookbook{LocationType: "github"}
 			sc.artifact = false
 			sc.tagged = tagged
-			sc.gitHubOrg = gitHubOrg
+			sc.gitHubOrg = gitOrg
 			sc.DownloadURL = link
 			return sc, nil
-		}
-	}
-	if cfg.Chef.EnterpriseChef {
-		if cust, found := cfg.Customer[org]; found {
-			if cust.GitCookbookOrg != nil {
-				link, tagged, err := searchCookbookRepo(*cust.GitCookbookOrg, name, fmt.Sprintf("v%s", version))
-				if err != nil {
-					return nil, err
-				}
-				if link != nil {
-					sc.artifact = false
-					sc.tagged = tagged
-					sc.gitHubOrg = *cust.GitCookbookOrg
-					sc.DownloadURL = link
-					return sc, nil
-				}
-			}
 		}
 	}
 	return nil, nil
