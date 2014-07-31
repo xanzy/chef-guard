@@ -45,7 +45,8 @@ type Config struct {
 		PublishCookbook bool
 		Blacklist       string
 		GitOrganization string
-		GitCookbookOrg  []string
+		GitCookbookOrgs string
+		ExcludeFCs      string
 	}
 	Customer map[string]*struct {
 		Mode            *string
@@ -59,7 +60,8 @@ type Config struct {
 		SearchGithub    *bool
 		PublishCookbook *bool
 		Blacklist       *string
-		GitCookbookOrg  *string
+		GitCookbookOrgs *string
+		ExcludeFCs      *string
 	}
 	Chef struct {
 		EnterpriseChef bool

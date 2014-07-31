@@ -25,7 +25,7 @@ import (
 
 func (cg *ChefGuard) executeChecks() (int, error) {
 	if cfg.Tests.Foodcritic != "" {
-		if errCode, err := runFoodcritic(cg.CookbookPath); err != nil {
+		if errCode, err := runFoodcritic(cg.Organization, cg.CookbookPath); err != nil {
 			if errCode == http.StatusBadGateway || cg.continueAfterFailedCheck("foodcritic") == false {
 				return errCode, err
 			}
@@ -52,11 +52,12 @@ func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 	return true
 }
 
-func runFoodcritic(cookbookPath string) (int, error) {
-	cmd := exec.Command(cfg.Tests.Foodcritic, "-t ~FC031 -t ~FC045 -B", cookbookPath)
+func runFoodcritic(org, cookbookPath string) (int, error) {
+	args := getFoodcriticArgs(org, cookbookPath)
+	cmd := exec.Command(cfg.Tests.Foodcritic, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return http.StatusBadGateway, fmt.Errorf("Failed to execute foodcritic tests: %s", err)
+		return http.StatusBadGateway, fmt.Errorf("Failed to execute foodcritic tests: %s - %s", output, err)
 	}
 	if strings.TrimSpace(string(output)) != "" {
 		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Foodcritic errors found ===\n%s\n===============================\n", strings.TrimSpace(string(output)))
@@ -64,11 +65,25 @@ func runFoodcritic(cookbookPath string) (int, error) {
 	return 0, nil
 }
 
+func getFoodcriticArgs(org, cookbookPath string) []string {
+	excludes := cfg.Default.ExcludeFCs
+	custExcludes := getEffectiveConfig("ExcludeFCs", org)
+	if excludes != custExcludes {
+		excludes = fmt.Sprintf("%s,%s", excludes, custExcludes)
+	}
+	excls := strings.Split(excludes, ",")
+	args := []string{}
+	for _, excl := range excls {
+		args = append(args, fmt.Sprintf("-t ~%s", strings.TrimSpace(excl)))
+	}
+	return append(args, "-B", cookbookPath)
+}
+
 func runRubocop(cookbookPath string) (int, error) {
 	cmd := exec.Command(cfg.Tests.Rubocop, cookbookPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s", err)
+		return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
 	}
 	if strings.TrimSpace(string(output)) != "" {
 		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", strings.TrimSpace(string(output)))
