@@ -23,14 +23,11 @@ var metric *graphite.Graphite
 func initGraphite() {
 	var err error
 	if cfg.Graphite.Server != "" && cfg.Graphite.Port != 0 {
-		metric, err = graphite.NewGraphite(cfg.Graphite.Server, cfg.Graphite.Port)
-	} else {
-		metric = graphite.NewGraphiteNop(cfg.Graphite.Server, cfg.Graphite.Port)
+		if metric, err = graphite.NewGraphite(cfg.Graphite.Server, cfg.Graphite.Port); err != nil {
+			ERROR.Printf("Failed to connect to Graphite server %s on port %d. No metrics will be send! The error was: %s\n", cfg.Graphite.Server, cfg.Graphite.Port, err)
+		}
 	}
-
-	// if you couldn't connect to graphite, use a nop
-	if err != nil {
-		ERROR.Printf("Failed to connect to Graphite server %s on port %d. No metrics will be send! The error was: %s\n", cfg.Graphite.Server, cfg.Graphite.Port, err)
+	if metric == nil {
 		metric = graphite.NewGraphiteNop(cfg.Graphite.Server, cfg.Graphite.Port)
 	}
 }

@@ -26,14 +26,14 @@ import (
 func (cg *ChefGuard) executeChecks() (int, error) {
 	if cfg.Tests.Foodcritic != "" {
 		if errCode, err := runFoodcritic(cg.Organization, cg.CookbookPath); err != nil {
-			if errCode == http.StatusBadGateway || cg.continueAfterFailedCheck("foodcritic") == false {
+			if errCode == http.StatusBadGateway || !cg.continueAfterFailedCheck("foodcritic") {
 				return errCode, err
 			}
 		}
 	}
 	if cfg.Tests.Rubocop != "" {
 		if errCode, err := runRubocop(cg.CookbookPath); err != nil {
-			if errCode == http.StatusBadGateway || cg.continueAfterFailedCheck("rubocop") == false {
+			if errCode == http.StatusBadGateway || !cg.continueAfterFailedCheck("rubocop") {
 				return errCode, err
 			}
 		}
@@ -43,13 +43,12 @@ func (cg *ChefGuard) executeChecks() (int, error) {
 
 func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 	WARNING.Printf("%s errors when uploading cookbook '%s' for '%s'\n", strings.Title(check), cg.Cookbook.Name, cg.User)
-	if getEffectiveConfig("Mode", cg.Organization).(string) == "permissive" && cg.ForcedUpload == true {
+	if getEffectiveConfig("Mode", cg.Organization).(string) == "permissive" && cg.ForcedUpload {
 		go metric.SimpleSend(fmt.Sprintf("chef-guard.failed.%s.forced_bypass", check), "1")
-	} else {
-		go metric.SimpleSend(fmt.Sprintf("chef-guard.failed.%s.no_bypass", check), "1")
-		return false
+		return true
 	}
-	return true
+	go metric.SimpleSend(fmt.Sprintf("chef-guard.failed.%s.no_bypass", check), "1")
+	return false
 }
 
 func runFoodcritic(org, cookbookPath string) (int, error) {

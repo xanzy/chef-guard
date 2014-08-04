@@ -157,13 +157,13 @@ func verifyBlackLists() error {
 }
 
 func parsePaths(ep string) error {
-	if path.IsAbs(cfg.Default.Logfile) == false {
+	if !path.IsAbs(cfg.Default.Logfile) {
 		cfg.Default.Logfile = path.Join(ep, cfg.Default.Logfile)
 	}
-	if cfg.Tests.Foodcritic != "" && path.IsAbs(cfg.Tests.Foodcritic) == false {
+	if cfg.Tests.Foodcritic != "" && !path.IsAbs(cfg.Tests.Foodcritic) {
 		cfg.Tests.Foodcritic = path.Join(ep, cfg.Tests.Foodcritic)
 	}
-	if cfg.Tests.Rubocop != "" && path.IsAbs(cfg.Tests.Rubocop) == false {
+	if cfg.Tests.Rubocop != "" && !path.IsAbs(cfg.Tests.Rubocop) {
 		cfg.Tests.Rubocop = path.Join(ep, cfg.Tests.Rubocop)
 	}
 	return nil
@@ -174,7 +174,7 @@ func getEffectiveConfig(key, org string) interface{} {
 		if c, found := cfg.Customer[org]; found {
 			conf := reflect.ValueOf(c).Elem()
 			v := conf.FieldByName(key)
-			if v.IsNil() == false {
+			if !v.IsNil() {
 				return v.Elem().Interface()
 			}
 		}

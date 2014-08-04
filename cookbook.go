@@ -18,6 +18,7 @@ package main
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"crypto/hmac"
@@ -125,6 +126,12 @@ func (cg *ChefGuard) processCookbookFiles() error {
 		if err := writeFileToDisk(path.Join(cg.CookbookPath, f.Path), strings.NewReader(string(content))); err != nil {
 			return fmt.Errorf("Failed to write file %s to disk: %s", path.Join(cg.CookbookPath, f.Path), err)
 		}
+		// Parse ignore files
+		if f.Name == ".gitignore" || f.Name == "chefignore" {
+			if err := cg.parseIgnoreFile(strings.NewReader(string(content))); err != nil {
+				return fmt.Errorf("Failed to parse %s: %s", f.Name, err)
+			}
+		}
 		// Save the md5 hash to the ChefGuard struct
 		cg.FileHashes[f.Path] = md5.Sum(content)
 		// Add the file to the tar archive
@@ -194,9 +201,21 @@ func (cg *ChefGuard) getAllCookbookFiles() []struct{ chef.CookbookItem } {
 	return allFiles
 }
 
+func (cg *ChefGuard) parseIgnoreFile(content io.Reader) error {
+	scanner := bufio.NewScanner(content)
+	for scanner.Scan() {
+		pattern := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(pattern, "#") || len(pattern) == 0 {
+			continue
+		}
+		cg.FilesToIgnore[pattern] = struct{}{}
+	}
+	return scanner.Err()
+}
+
 func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
-	if cg.SourceCookbook.artifact == false {
-		if cg.SourceCookbook.tagged == false {
+	if !cg.SourceCookbook.artifact {
+		if !cg.SourceCookbook.tagged {
 			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
 			if err := tagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
 				return http.StatusBadGateway, err
@@ -238,11 +257,7 @@ func downloadCookbookFile(orgID, checksum string) ([]byte, error) {
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
 		return nil, err
 	}
-	c, err := dumpBody(resp)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
+	return dumpBody(resp)
 }
 
 func generateSignedURL(orgID, checksum string) (*url.URL, error) {
@@ -262,12 +277,7 @@ func generateSignedURL(orgID, checksum string) (*url.URL, error) {
 	default:
 		baseURL = fmt.Sprintf("%s:%s", cfg.Chef.Server, cfg.Chef.Port)
 	}
-
-	u, err := url.Parse(fmt.Sprintf("%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s", baseURL, orgID, checksum, cfg.Chef.S3Key, expires, signature))
-	if err != nil {
-		return nil, err
-	}
-	return u, nil
+	return url.Parse(fmt.Sprintf("%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s", baseURL, orgID, checksum, cfg.Chef.S3Key, expires, signature))
 }
 
 func writeFileToDisk(filePath string, content io.Reader) error {
@@ -328,14 +338,15 @@ func checkHTTPResponse(resp *http.Response, allowedStates []int) error {
 	if err != nil {
 		return fmt.Errorf("Failed to get body from call to %s: %s", resp.Request.URL.String(), err)
 	}
-	if err := json.Unmarshal(body, errInfo); err != nil {
-		return err
-	}
-	if errInfo.Errors != nil {
-		return fmt.Errorf(strings.Join(errInfo.Errors, ";"))
-	}
-	if errInfo.ErrorMessages != nil {
-		return fmt.Errorf(strings.Join(errInfo.ErrorMessages, ";"))
+	// If this returns an error the return body is probably not JSON,
+	// in which case we just move on and return the raw body instead.
+	if err := json.Unmarshal(body, errInfo); err == nil {
+		if errInfo.Errors != nil {
+			return fmt.Errorf(strings.Join(errInfo.Errors, ";"))
+		}
+		if errInfo.ErrorMessages != nil {
+			return fmt.Errorf(strings.Join(errInfo.ErrorMessages, ";"))
+		}
 	}
 	return fmt.Errorf(string(body))
 }
