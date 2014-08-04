@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -100,7 +101,7 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 		}
 		return errCode, err
 	}
-	if cg.SourceCookbook.artifact == false {
+	if !cg.SourceCookbook.artifact {
 		if errCode, err := cg.executeChecks(); err != nil {
 			return errCode, err
 		}
@@ -157,9 +158,11 @@ func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, err
 			if version == "0.0.0" {
 				continue
 			}
-			if frozen, err := cg.cookbookFrozen(name, version); err != nil {
+			frozen, err := cg.cookbookFrozen(name, version)
+			if err != nil {
 				return http.StatusBadGateway, err
-			} else if frozen == false {
+			}
+			if !frozen {
 				return http.StatusPreconditionFailed, fmt.Errorf("Your are depending on the %s cookbook version %s which isn't frozen! Please freeze the cookbook first before depending on it!", name, version)
 			}
 		}
@@ -172,7 +175,7 @@ func (cg *ChefGuard) cookbookFrozen(name, version string) (bool, error) {
 	if err != nil {
 		return true, fmt.Errorf("Failed to get info for cookbook %s version %s: %s", name, version, err)
 	}
-	if found == false {
+	if !found {
 		return false, nil
 	}
 	return cb.Frozen, nil
@@ -184,29 +187,39 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 		return http.StatusBadGateway, err
 	}
 	for file, fHash := range cg.FileHashes {
+		if file == "metadata.json" {
+			delete(sh, file)
+			continue
+		}
 		if sHash, exists := sh[file]; exists {
-			if file == "metadata.json" {
-				delete(sh, file)
-				continue
-			}
 			if fHash == sHash {
 				delete(sh, file)
 			} else {
 				return http.StatusPreconditionFailed, fmt.Errorf("The file %s is changed!", file)
 			}
 		} else {
-			return http.StatusPreconditionFailed, fmt.Errorf("There is a file missing: %s", file)
+			ignore, err := cg.ignoreThisFile(file)
+			if err != nil {
+				return http.StatusBadGateway, fmt.Errorf("", err)
+			}
+			if !ignore {
+				return http.StatusPreconditionFailed, fmt.Errorf("There is a file missing in the source cookbook: %s", file)
+			}
 		}
 	}
 	if len(sh) > 0 {
 		left := []string{}
 		for file, _ := range sh {
-			if file != "metadata.json" && file != "metadata.rb" {
+			ignore, err := cg.ignoreThisFile(file)
+			if err != nil {
+				return http.StatusBadGateway, fmt.Errorf("", err)
+			}
+			if !ignore {
 				left = append(left, file)
 			}
 		}
 		if len(left) > 0 {
-			return http.StatusPreconditionFailed, fmt.Errorf("There are new files added: %s", strings.Join(left, ","))
+			return http.StatusPreconditionFailed, fmt.Errorf("The source cookbook contains more files then your upload: %s", strings.Join(left, ","))
 		}
 	}
 	return 0, nil
@@ -230,6 +243,19 @@ func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
 		}
 	}
 	return http.StatusPreconditionFailed, fmt.Errorf("Failed to locate cookbook %s!", cg.Cookbook.Name)
+}
+
+func (cg *ChefGuard) ignoreThisFile(file string) (bool, error) {
+	for pattern, _ := range cg.FilesToIgnore {
+		match, err := filepath.Match(pattern, file)
+		if err != nil {
+			return false, err
+		}
+		if match {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func searchBerksAPI(name, version string) (*SourceCookbook, int, error) {
@@ -386,7 +412,7 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 	if sc.LocationType != "github" {
 		return http.DefaultClient, nil
 	}
-	if _, found := cfg.Github[sc.gitHubOrg]; found == false {
+	if _, found := cfg.Github[sc.gitHubOrg]; !found {
 		return nil, fmt.Errorf("No Github config specified for organization: %s!", sc.gitHubOrg)
 	}
 	t := &http.Transport{
@@ -414,7 +440,7 @@ func parseRunlists(runlists []string) map[string][]string {
 		if res := re.FindStringSubmatch(constrains); res != nil {
 			name := res[1]
 			version := res[2]
-			if contains(cbs[name], version) == false {
+			if !contains(cbs[name], version) {
 				cbs[name] = append(cbs[name], version)
 			}
 		}

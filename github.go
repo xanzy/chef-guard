@@ -177,8 +177,7 @@ func (cg *ChefGuard) mailChanges(file, sha, action string) error {
 		subject = fmt.Sprintf("[%s CHEF] deleted %s", strings.ToUpper(cg.Organization), file)
 	}
 	msg := createMessage(cg.Repo, *commit.Commit.Committer.Name, diff, subject)
-	err = mailDiff(cg.Repo, *commit.Commit.Committer.Email, msg)
-	return err
+	return mailDiff(cg.Repo, *commit.Commit.Committer.Email, msg)
 }
 
 func (cg *ChefGuard) getDiff(sha string) (string, *github.RepositoryCommit, error) {
@@ -348,7 +347,7 @@ func tagCookbookRepo(org, repo, version, user, mail string) error {
 
 func getCustomClient(org string) (*github.Client, error) {
 	git, found := cfg.Github[org]
-	if found == false {
+	if !found {
 		return nil, fmt.Errorf("No Github config specified for organization: %s!", org)
 	}
 	t := &oauth.Transport{

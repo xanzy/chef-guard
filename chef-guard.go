@@ -46,6 +46,7 @@ type ChefGuard struct {
 	ChangeDetails  *changeDetails
 	ForcedUpload   bool
 	FileHashes     map[string][16]byte
+	FilesToIgnore  map[string]struct{}
 	TarFile        []byte
 }
 
@@ -62,7 +63,9 @@ func newChefGuard(r *http.Request) (*ChefGuard, error) {
 		cg.Repo = "config"
 	}
 	// Initialize map for the file hashes
-	cg.FileHashes = make(map[string][16]byte)
+	cg.FileHashes = map[string][16]byte{}
+	// Initialize map for the files to ignore
+	cg.FilesToIgnore = map[string]struct{}{"metadata.rb": struct{}{}, "metadata.json": struct{}{}}
 	// Setup chefClient
 	var err error
 	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, cfg.Chef.Version, cfg.Chef.User, cfg.Chef.Key, cg.Organization)
@@ -158,7 +161,7 @@ func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 }
 
 func getOrgFromRequest(r *http.Request) string {
-	if cfg.Chef.EnterpriseChef == false {
+	if !cfg.Chef.EnterpriseChef {
 		return ""
 	}
 	return mux.Vars(r)["org"]
