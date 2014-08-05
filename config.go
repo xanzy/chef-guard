@@ -76,6 +76,10 @@ type Config struct {
 		User           string
 		Key            string
 	}
+	Community struct {
+		Supermarket string
+		Forks       string
+	}
 	Supermarket struct {
 		Server      string
 		Port        string
@@ -84,16 +88,13 @@ type Config struct {
 		User        string
 		Key         string
 	}
-	BerksAPI struct {
-		ServerURL string
+	Graphite struct {
+		Server string
+		Port   int
 	}
 	Tests struct {
 		Foodcritic string
 		Rubocop    string
-	}
-	Graphite struct {
-		Server string
-		Port   int
 	}
 	Github map[string]*struct {
 		ServerURL   string

@@ -49,8 +49,6 @@ type SourceCookbook struct {
 	LocationPath     string   `json:"location_path,omitempty"`
 }
 
-type BerksResult map[string]map[string]*SourceCookbook
-
 type Constraints struct {
 	CookbookVersions map[string]string   `json:"cookbook_versions"`
 	RunList          []string            `json:"run_list"`
@@ -226,23 +224,21 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 }
 
 func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
-	cg.SourceCookbook, errCode, err = searchBerksAPI(cg.Cookbook.Name, cg.Cookbook.Version)
+	cg.SourceCookbook, errCode, err = searchCommunityCookbooks(cg.Cookbook.Name, cg.Cookbook.Version)
 	if err != nil {
 		return errCode, err
 	}
 	if cg.SourceCookbook != nil {
 		return 0, nil
 	}
-	if getEffectiveConfig("SearchGithub", cg.Organization).(bool) {
-		cg.SourceCookbook, err = searchGithub(cg.Organization, cg.Cookbook.Name, cg.Cookbook.Version)
-		if err != nil {
-			return http.StatusBadGateway, err
-		}
-		if cg.SourceCookbook != nil {
-			return 0, nil
-		}
+	cg.SourceCookbook, errCode, err = searchPrivateCookbooks(cg.Organization, cg.Cookbook.Name, cg.Cookbook.Version)
+	if err != nil {
+		return errCode, err
 	}
-	return http.StatusPreconditionFailed, fmt.Errorf("Failed to locate cookbook %s!", cg.Cookbook.Name)
+	if cg.SourceCookbook != nil {
+		return 0, nil
+	}
+	return http.StatusPreconditionFailed, fmt.Errorf("Failed to locate the source of the %s cookbook!", cg.Cookbook.Name)
 }
 
 func (cg *ChefGuard) ignoreThisFile(file string) (bool, error) {
@@ -258,10 +254,66 @@ func (cg *ChefGuard) ignoreThisFile(file string) (bool, error) {
 	return false, nil
 }
 
-func searchBerksAPI(name, version string) (*SourceCookbook, int, error) {
-	u, err := url.Parse(fmt.Sprintf("%s/%s", cfg.BerksAPI.ServerURL, "universe"))
+func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error) {
+	sc, errCode, err := searchSupermarket(cfg.Community.Supermarket, name, version)
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("Failed to parse the Berks API URL %s: %s", cfg.BerksAPI.ServerURL, err)
+		return nil, errCode, err
+	}
+	if sc != nil {
+		return sc, 0, nil
+	}
+	if errCode == 1 {
+		sc, err = searchGithub([]string{cfg.Community.Forks}, name, version, true)
+		if err != nil {
+			return nil, http.StatusBadGateway, err
+		}
+		if sc != nil {
+			// Do additional tests to check for a PR!
+			return sc, 0, nil
+		}
+		return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload a non-existing version of a community\ncookbook! Make sure you are using an existing community version,\nor a fork that has a pending pull request back to the community.")
+	}
+	return nil, 0, nil
+}
+
+func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, error) {
+	var u string
+	switch cfg.Supermarket.Port {
+	case "80":
+		u = fmt.Sprintf("http://%s", cfg.Supermarket.Server)
+	case "443":
+		u = fmt.Sprintf("https://%s", cfg.Supermarket.Server)
+	default:
+		u = fmt.Sprintf("http://%s:%s", cfg.Supermarket.Server, cfg.Supermarket.Port)
+	}
+	sc, errCode, err := searchSupermarket(u, name, version)
+	if err != nil {
+		return nil, errCode, err
+	}
+	if sc != nil {
+		return sc, 0, nil
+	}
+	if getEffectiveConfig("SearchGithub", org).(bool) {
+		orgList := cfg.Default.GitCookbookOrgs
+		custOrgList := getEffectiveConfig("GitCookbookOrgs", org)
+		if orgList != custOrgList {
+			orgList = fmt.Sprintf("%s,%s", orgList, custOrgList)
+		}
+		sc, err = searchGithub(strings.Split(orgList, ","), name, version, false)
+		if err != nil {
+			return nil, http.StatusBadGateway, err
+		}
+		if sc != nil {
+			return sc, 0, nil
+		}
+	}
+	return nil, 0, nil
+}
+
+func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int, error) {
+	u, err := url.Parse(fmt.Sprintf("%s/%s", supermarket, "universe"))
+	if err != nil {
+		return nil, http.StatusBadGateway, fmt.Errorf("Failed to parse the community cookbooks URL %s: %s", supermarket, err)
 	}
 	resp, err := http.Get(u.String())
 	if err != nil {
@@ -275,7 +327,7 @@ func searchBerksAPI(name, version string) (*SourceCookbook, int, error) {
 	if err != nil {
 		return nil, http.StatusBadGateway, fmt.Errorf("Failed to read the response body from %v: %s", resp, err)
 	}
-	results := make(BerksResult)
+	results := make(map[string]map[string]*SourceCookbook)
 	if err := json.Unmarshal(body, &results); err != nil {
 		return nil, http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
 	}
@@ -291,9 +343,8 @@ func searchBerksAPI(name, version string) (*SourceCookbook, int, error) {
 				return sc, 0, nil
 			}
 		} else {
-			if isCommunityCookbook(cb) {
-				return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload a non-existing version of a community\ncookbook! Make sure you are using an existing community version.")
-			}
+			// Return error code 1 if the we can find the cookbook, but not the correct version
+			return nil, 1, nil
 		}
 	}
 	return nil, 0, nil
@@ -327,30 +378,10 @@ func communityDownloadUrl(path, name, version string) (*url.URL, error) {
 	return u, nil
 }
 
-func isCommunityCookbook(cb map[string]*SourceCookbook) bool {
-	var sc *SourceCookbook
-	for _, sc = range cb {
-		break
-	}
-	if sc.LocationType == "supermarket" {
-		if sc.EndpointPriority == 0 {
-			return true
-		}
-	}
-	return false
-}
-
-func searchGithub(org, name, version string) (*SourceCookbook, error) {
-	orgList := cfg.Default.GitCookbookOrgs
-	custOrgList := getEffectiveConfig("GitCookbookOrgs", org)
-	if orgList != custOrgList {
-		orgList = fmt.Sprintf("%s,%s", orgList, custOrgList)
-	}
-	gitOrgs := strings.Split(orgList, ",")
-
-	for _, gitOrg := range gitOrgs {
-		gitOrg = strings.TrimSpace(gitOrg)
-		link, tagged, err := searchCookbookRepo(gitOrg, name, fmt.Sprintf("v%s", version))
+func searchGithub(orgs []string, name, version string, tagsOnly bool) (*SourceCookbook, error) {
+	for _, org := range orgs {
+		org = strings.TrimSpace(org)
+		link, tagged, err := searchCookbookRepo(org, name, fmt.Sprintf("v%s", version), tagsOnly)
 		if err != nil {
 			return nil, err
 		}
@@ -358,7 +389,7 @@ func searchGithub(org, name, version string) (*SourceCookbook, error) {
 			sc := &SourceCookbook{LocationType: "github"}
 			sc.artifact = false
 			sc.tagged = tagged
-			sc.gitHubOrg = gitOrg
+			sc.gitHubOrg = org
 			sc.DownloadURL = link
 			return sc, nil
 		}
