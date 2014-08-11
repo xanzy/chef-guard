@@ -18,7 +18,6 @@ package main
 
 import (
 	"archive/tar"
-	"bufio"
 	"bytes"
 	"compress/gzip"
 	"crypto/hmac"
@@ -126,11 +125,13 @@ func (cg *ChefGuard) processCookbookFiles() error {
 		if err := writeFileToDisk(path.Join(cg.CookbookPath, f.Path), strings.NewReader(string(content))); err != nil {
 			return fmt.Errorf("Failed to write file %s to disk: %s", path.Join(cg.CookbookPath, f.Path), err)
 		}
-		// Parse ignore files
-		if f.Name == ".gitignore" || f.Name == "chefignore" {
-			if err := cg.parseIgnoreFile(strings.NewReader(string(content))); err != nil {
-				return fmt.Errorf("Failed to parse %s: %s", f.Name, err)
-			}
+		// Save .gitignore file for later use
+		if f.Name == ".gitignore" {
+			cg.GitIgnoreFile = content
+		}
+		// Save chefignore file for later use
+		if f.Name == "chefignore" {
+			cg.ChefIgnoreFile = content
 		}
 		// Save the md5 hash to the ChefGuard struct
 		cg.FileHashes[f.Path] = md5.Sum(content)
@@ -199,18 +200,6 @@ func (cg *ChefGuard) getAllCookbookFiles() []struct{ chef.CookbookItem } {
 	allFiles = append(allFiles, cg.Cookbook.Templates...)
 	allFiles = append(allFiles, cg.Cookbook.RootFiles...)
 	return allFiles
-}
-
-func (cg *ChefGuard) parseIgnoreFile(content io.Reader) error {
-	scanner := bufio.NewScanner(content)
-	for scanner.Scan() {
-		pattern := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(pattern, "#") || len(pattern) == 0 {
-			continue
-		}
-		cg.FilesToIgnore[pattern] = struct{}{}
-	}
-	return scanner.Err()
 }
 
 func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {

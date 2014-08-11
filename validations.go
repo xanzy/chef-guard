@@ -18,6 +18,7 @@ package main
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"crypto/md5"
 	"crypto/tls"
@@ -27,9 +28,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/xanzy/pathspec"
 )
 
 type ErrorInfo struct {
@@ -242,14 +244,14 @@ func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
 }
 
 func (cg *ChefGuard) ignoreThisFile(file string) (bool, error) {
-	for pattern, _ := range cg.FilesToIgnore {
-		match, err := filepath.Match(pattern, file)
-		if err != nil {
-			return false, err
-		}
-		if match {
-			return true, nil
-		}
+	if file == "metadata.rb" || file == "metadata.json" {
+		return true, nil
+	}
+	if ignore, err := pathspec.GitIgnore(bytes.NewReader(cg.GitIgnoreFile), file); ignore || err != nil {
+		return ignore, err
+	}
+	if ignore, err := pathspec.ChefIgnore(bytes.NewReader(cg.ChefIgnoreFile), file); ignore || err != nil {
+		return ignore, err
 	}
 	return false, nil
 }
@@ -271,7 +273,9 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 			// Do additional tests to check for a PR!
 			return sc, 0, nil
 		}
-		return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload a non-existing version of a community\ncookbook! Make sure you are using an existing community version,\nor a fork that has a pending pull request back to the community.")
+		return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload '%s' version '%s' which is a\n"+
+			"non-existing version of a community cookbook! Make sure you are using\n"+
+			"an existing community version, or a fork with a pending pull request.", name, version)
 	}
 	return nil, 0, nil
 }
@@ -334,14 +338,12 @@ func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int,
 	if cb, exists := results[name]; exists {
 		if sc, exists := cb[version]; exists {
 			sc.artifact = true
-			if sc.LocationType == "supermarket" {
-				u, err := communityDownloadUrl(sc.LocationPath, name, version)
-				if err != nil {
-					return nil, http.StatusBadGateway, err
-				}
-				sc.DownloadURL = u
-				return sc, 0, nil
+			u, err := communityDownloadUrl(sc.LocationPath, name, version)
+			if err != nil {
+				return nil, http.StatusBadGateway, err
 			}
+			sc.DownloadURL = u
+			return sc, 0, nil
 		} else {
 			// Return error code 1 if the we can find the cookbook, but not the correct version
 			return nil, 1, nil
