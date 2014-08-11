@@ -40,6 +40,10 @@
 		{
 			"ImportPath": "github.com/marpaia/graphite-golang",
 			"Rev": "c5518419e353360b24b340ebd1066af7cab612c3"
+		},
+		{
+			"ImportPath": "github.com/xanzy/pathspec",
+			"Rev": "1fd91fb7ce857d8a604100894bb76abf453bfc9c"
 		}
 	]
 }

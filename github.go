@@ -275,7 +275,7 @@ func mailDiff(org, from, msg string) error {
 	return c.Quit()
 }
 
-func searchCookbookRepo(org, repo, tag string) (*url.URL, bool, error) {
+func searchCookbookRepo(org, repo, tag string, taggedOnly bool) (*url.URL, bool, error) {
 	tagged := false
 	gitClient, err := getCustomClient(org)
 	if err != nil {
@@ -294,6 +294,9 @@ func searchCookbookRepo(org, repo, tag string) (*url.URL, bool, error) {
 		}
 	} else {
 		tagged = true
+	}
+	if taggedOnly && !tagged {
+		return nil, tagged, nil
 	}
 	// Get the archive link for the tagged version or master
 	link, resp, err := gitClient.Repositories.GetArchiveLink(org, repo, github.Tarball, &github.RepositoryContentGetOptions{Ref: tag})
@@ -338,8 +341,19 @@ func tagCookbookRepo(org, repo, version, user, mail string) error {
 	}
 	refTag := fmt.Sprintf("tags/%s", version)
 	ref := &github.Reference{Ref: &refTag, URL: tagObject.URL, Object: &github.GitObject{SHA: tagObject.SHA}}
-	_, resp, err = gitClient.Git.CreateRef(org, repo, ref)
+	if _, resp, err = gitClient.Git.CreateRef(org, repo, ref); err != nil {
+		return fmt.Errorf("Received an unexpected reply from Github: %v", resp)
+	}
+	return nil
+}
+
+func untagCookbookRepo(org, repo, version string) error {
+	gitClient, err := getCustomClient(org)
 	if err != nil {
+		return fmt.Errorf("Failed to create custom Git client: %s", err)
+	}
+	ref := fmt.Sprintf("tags/v%s", version)
+	if resp, err := gitClient.Git.DeleteRef(org, repo, ref); err != nil {
 		return fmt.Errorf("Received an unexpected reply from Github: %v", resp)
 	}
 	return nil

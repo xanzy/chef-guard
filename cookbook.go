@@ -18,7 +18,6 @@ package main
 
 import (
 	"archive/tar"
-	"bufio"
 	"bytes"
 	"compress/gzip"
 	"crypto/hmac"
@@ -126,11 +125,13 @@ func (cg *ChefGuard) processCookbookFiles() error {
 		if err := writeFileToDisk(path.Join(cg.CookbookPath, f.Path), strings.NewReader(string(content))); err != nil {
 			return fmt.Errorf("Failed to write file %s to disk: %s", path.Join(cg.CookbookPath, f.Path), err)
 		}
-		// Parse ignore files
-		if f.Name == ".gitignore" || f.Name == "chefignore" {
-			if err := cg.parseIgnoreFile(strings.NewReader(string(content))); err != nil {
-				return fmt.Errorf("Failed to parse %s: %s", f.Name, err)
-			}
+		// Save .gitignore file for later use
+		if f.Name == ".gitignore" {
+			cg.GitIgnoreFile = content
+		}
+		// Save chefignore file for later use
+		if f.Name == "chefignore" {
+			cg.ChefIgnoreFile = content
 		}
 		// Save the md5 hash to the ChefGuard struct
 		cg.FileHashes[f.Path] = md5.Sum(content)
@@ -201,18 +202,6 @@ func (cg *ChefGuard) getAllCookbookFiles() []struct{ chef.CookbookItem } {
 	return allFiles
 }
 
-func (cg *ChefGuard) parseIgnoreFile(content io.Reader) error {
-	scanner := bufio.NewScanner(content)
-	for scanner.Scan() {
-		pattern := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(pattern, "#") || len(pattern) == 0 {
-			continue
-		}
-		cg.FilesToIgnore[pattern] = struct{}{}
-	}
-	return scanner.Err()
-}
-
 func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 	if !cg.SourceCookbook.artifact {
 		if !cg.SourceCookbook.tagged {
@@ -223,7 +212,11 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 		}
 		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) {
 			if err := cg.publishCookbook(); err != nil {
-				return http.StatusBadGateway, err
+				errText := err.Error()
+				if err := untagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version); err != nil {
+					errText = fmt.Sprintf("%s - NOTE: Failed to untag the repo during cleanup!", errText)
+				}
+				return http.StatusBadGateway, fmt.Errorf(errText)
 			}
 		}
 	}
