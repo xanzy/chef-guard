@@ -78,7 +78,6 @@ type GitIgnorePattern struct {
 // Other consecutive asterisks are considered invalid.
 
 func GitIgnore(content io.Reader, name string) (ignore bool, err error) {
-	match := false
 	scanner := bufio.NewScanner(content)
 
 	for scanner.Scan() {
@@ -87,7 +86,8 @@ func GitIgnore(content io.Reader, name string) (ignore bool, err error) {
 			continue
 		}
 		p := parsePattern(pattern)
-		if match, err = regexp.MatchString(p.Regex, name); err != nil {
+		match, err := regexp.MatchString(p.Regex, name)
+		if err != nil {
 			return ignore, err
 		}
 		if match {
@@ -107,9 +107,9 @@ func parsePattern(pattern string) *GitIgnorePattern {
 	// excluded by a previous pattern will become included again.
 	if strings.HasPrefix(pattern, "!") {
 		pattern = pattern[1:]
-		p.Include = false
-	} else {
 		p.Include = true
+	} else {
+		p.Include = false
 	}
 
 	// Remove leading back-slash escape for escaped hash ('#') or

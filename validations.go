@@ -31,7 +31,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/xanzy/pathspec"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/xanzy/go-pathspec"
 )
 
 type ErrorInfo struct {
