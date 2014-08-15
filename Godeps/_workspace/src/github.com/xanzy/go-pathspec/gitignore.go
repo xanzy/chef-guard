@@ -263,5 +263,5 @@ func translateBraketExpression(i *int, glob string) string {
 		// braket literal instead of as an expression.
 		regex = regexp.QuoteMeta(string(glob[*i]))
 	}
-	return regex
+	return "[" + regex + "]"
 }

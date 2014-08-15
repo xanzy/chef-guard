@@ -43,8 +43,8 @@
 		},
 		{
 			"ImportPath": "github.com/xanzy/go-pathspec",
-			"Comment": "v1.0.0",
-			"Rev": "c26c3c7e4e59cc93f437805d273f0ec6a3b09316"
+			"Comment": "v1.0.1",
+			"Rev": "1df22d11e0dfefec0469a9f2c7c4588308b9a5c0"
 		}
 	]
 }
