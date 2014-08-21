@@ -15,7 +15,7 @@ _Assuming enough Chef knowledge, it shouldn't take more than 30 minutes to get y
 
 * Read the Chef-Guard [documentation](http://xanzy.io/projects/chef-guard) explaining and describing what Chef-Guard is and how it works
 * Assuming you already have a running Chef environment, walk through the Chef-Guard [prerequisites](http://xanzy.io/projects/chef-guard/installation/prerequisites.html)
-* Your now ready to follow the actual [installation](http://xanzy.io/projects/chef-guard/installation/installation.html) which (if you prefer) can be done using a [cookbook](http://xanzy.io/projects/chef-guard/installation/installation.html#install-using-a-cookbook) in just a few minutes
+* Your now ready to follow the actual [installation](http://xanzy.io/projects/chef-guard/installation/installation.html) which (if you prefer) can be done using a [cookbook](http://xanzy.io/projects/chef-guard/installation/installation.html#installation-using-a-cookbook) in just a few minutes
 
 ## Building
 
