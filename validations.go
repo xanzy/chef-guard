@@ -111,7 +111,7 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 			switch cg.SourceCookbook.LocationType {
 			case "supermarket":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
-					"%s\nSource: %s\n\n"+
+					"%s\n\nSource: %s\n\n"+
 					"Make sure you are using an unchanged community version\n"+
 					"or, if you really need to change something, make a fork to\n"+
 					"https://github.com and create a pull request back to the\n"+
@@ -119,13 +119,13 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
 			case "github":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
-					"%s\nSource: %s\n\n"+
+					"%s\n\nSource: %s\n\n"+
 					"Make sure all your changes are merged into the central\n"+
 					"repositories before trying to upload the cookbook again.\n"+
 					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
 			default:
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
-					"%s\nSource: %s\n"+
+					"%s\n\nSource: %s\n"+
 					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
 			}
 		}
@@ -182,10 +182,12 @@ func (cg *ChefGuard) cookbookFrozen(name, version string) (bool, error) {
 }
 
 func (cg *ChefGuard) compareCookbooks() (int, error) {
-	sh, err := getSourceFileHashes(cg.SourceCookbook)
+	sh, err := cg.getSourceFileHashes()
 	if err != nil {
 		return http.StatusBadGateway, err
 	}
+	changed := []string{}
+	missing := []string{}
 	for file, fHash := range cg.FileHashes {
 		if file == "metadata.json" {
 			delete(sh, file)
@@ -195,7 +197,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 			if fHash == sHash {
 				delete(sh, file)
 			} else {
-				return http.StatusPreconditionFailed, fmt.Errorf("The file %s is changed!", file)
+				changed = append(changed, file)
 			}
 		} else {
 			ignore, err := cg.ignoreThisFile(file)
@@ -203,23 +205,28 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 				return http.StatusBadGateway, fmt.Errorf("", err)
 			}
 			if !ignore {
-				return http.StatusPreconditionFailed, fmt.Errorf("There is a file missing in the source cookbook: %s", file)
+				missing = append(missing, file)
 			}
 		}
 	}
+	if len(changed) > 0 {
+		return http.StatusPreconditionFailed, fmt.Errorf("The following file(s) are changed:\n - %s", strings.Join(changed, "\n - "))
+	}
+	if len(missing) > 0 {
+		return http.StatusPreconditionFailed, fmt.Errorf("Your upload contains more files than the source cookbook:\n - %s", strings.Join(missing, "\n - "))
+	}
 	if len(sh) > 0 {
-		left := []string{}
 		for file, _ := range sh {
 			ignore, err := cg.ignoreThisFile(file)
 			if err != nil {
 				return http.StatusBadGateway, fmt.Errorf("", err)
 			}
 			if !ignore {
-				left = append(left, file)
+				missing = append(missing, file)
 			}
 		}
-		if len(left) > 0 {
-			return http.StatusPreconditionFailed, fmt.Errorf("The source cookbook contains more files then your upload: %s", strings.Join(left, ","))
+		if len(missing) > 0 {
+			return http.StatusPreconditionFailed, fmt.Errorf("The source cookbook contains more files than your upload:\n - %s", strings.Join(missing, "\n - "))
 		}
 	}
 	return 0, nil
@@ -254,6 +261,57 @@ func (cg *ChefGuard) ignoreThisFile(file string) (bool, error) {
 		return ignore, err
 	}
 	return false, nil
+}
+
+func (cg *ChefGuard) getSourceFileHashes() (map[string][16]byte, error) {
+	client, err := newDownloadClient(cg.SourceCookbook)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create a new download client: %s", err)
+	}
+	resp, err := client.Get(cg.SourceCookbook.DownloadURL.String())
+	if err != nil {
+		return nil, fmt.Errorf("Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
+	}
+	defer resp.Body.Close()
+	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
+		return nil, fmt.Errorf("Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
+	}
+	var tr *tar.Reader
+	gr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create a new gzipReader: %s", err)
+	}
+	tr = tar.NewReader(gr)
+	files := make(map[string][16]byte)
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("Failed to process all files: %s", err)
+		}
+		if header == nil {
+			break
+		}
+		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
+			content, err := ioutil.ReadAll(tr)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to process all files: %s", err)
+			}
+			file := strings.SplitN(header.Name, "/", 2)[1]
+			// The source version should be leading, so save .gitignore file if we find one
+			if file == ".gitignore" {
+				cg.GitIgnoreFile = content
+			}
+			// The source version should be leading, so save chefignore file if we find one
+			if file == "chefignore" {
+				cg.ChefIgnoreFile = content
+			}
+			files[file] = md5.Sum(content)
+		}
+	}
+	return files, nil
 }
 
 func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error) {
@@ -397,48 +455,6 @@ func searchGithub(orgs []string, name, version string, tagsOnly bool) (*SourceCo
 		}
 	}
 	return nil, nil
-}
-
-func getSourceFileHashes(sc *SourceCookbook) (map[string][16]byte, error) {
-	client, err := newDownloadClient(sc)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create a new download client: %s", err)
-	}
-	resp, err := client.Get(sc.DownloadURL.String())
-	if err != nil {
-		return nil, fmt.Errorf("Failed to download the cookbook from %s: %s", sc.DownloadURL.String(), err)
-	}
-	defer resp.Body.Close()
-	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
-		return nil, fmt.Errorf("Failed to download the cookbook from %s: %s", sc.DownloadURL.String(), err)
-	}
-	var tr *tar.Reader
-	gr, err := gzip.NewReader(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create a new gzipReader: %s", err)
-	}
-	tr = tar.NewReader(gr)
-	files := make(map[string][16]byte)
-	for {
-		header, err := tr.Next()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("Failed to process all files: %s", err)
-		}
-		if header == nil {
-			break
-		}
-		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
-			content, err := ioutil.ReadAll(tr)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to process all files: %s", err)
-			}
-			files[strings.SplitN(header.Name, "/", 2)[1]] = md5.Sum(content)
-		}
-	}
-	return files, nil
 }
 
 func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
