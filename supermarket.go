@@ -79,6 +79,9 @@ func blackListed(org, cookbook string) bool {
 	if blacklist != custBL {
 		blacklist = fmt.Sprintf("%s,%s", blacklist, custBL)
 	}
+	if blacklist == "" {
+		return false
+	}
 	rgx := strings.Split(blacklist, ",")
 	for _, r := range rgx {
 		re, _ := regexp.Compile(strings.TrimSpace(r))
