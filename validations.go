@@ -163,7 +163,7 @@ func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, err
 				return http.StatusBadGateway, err
 			}
 			if !frozen {
-				return http.StatusPreconditionFailed, fmt.Errorf("Your are depending on the %s cookbook version %s which isn't frozen! Please freeze the cookbook first before depending on it!", name, version)
+				return http.StatusPreconditionFailed, fmt.Errorf("You are depending on the %s cookbook version %s which isn't frozen! Please freeze the cookbook first before depending on it!", name, version)
 			}
 		}
 	}
@@ -471,7 +471,7 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 }
 
 func parseCookbookVersions(constrains map[string]string) map[string][]string {
-	re := regexp.MustCompile(`^= (\d+\.\d+\.\d+)$`)
+	re := regexp.MustCompile(`^(?:= )?(\d+\.\d+\.\d+)$`)
 	cbs := make(map[string][]string)
 	for name, constrain := range constrains {
 		if res := re.FindStringSubmatch(constrain); res != nil {

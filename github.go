@@ -52,7 +52,13 @@ func remarshalConfig(action string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 	c = append(c, []byte("\n")...)
-	return c, nil
+	return DecodeMarshalledJSON(c), nil
+}
+
+func DecodeMarshalledJSON(b []byte) []byte {
+	r := strings.NewReplacer(`\u003c`, `<`, `\u003e`, `>`, `\u0026`, `&`)
+	s := r.Replace(string(b))
+	return []byte(s)
 }
 
 func setupGitClient() (*github.Client, error) {

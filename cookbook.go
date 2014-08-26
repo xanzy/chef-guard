@@ -314,12 +314,6 @@ func addMetadataJSON(tw *tar.Writer, cb *chef.CookbookVersion) error {
 	return nil
 }
 
-func DecodeMarshalledJSON(b []byte) []byte {
-	r := strings.NewReplacer(`\u003c`, `<`, `\u003e`, `>`, `\u0026`, `&`)
-	s := r.Replace(string(b))
-	return []byte(s)
-}
-
 func checkHTTPResponse(resp *http.Response, allowedStates []int) error {
 	for _, s := range allowedStates {
 		if resp.StatusCode == s {
