@@ -471,7 +471,7 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 }
 
 func parseCookbookVersions(constrains map[string]string) map[string][]string {
-	re := regexp.MustCompile(`^= (\d+\.\d+\.\d+)$`)
+	re := regexp.MustCompile(`^(?:= )?(\d+\.\d+\.\d+)$`)
 	cbs := make(map[string][]string)
 	for name, constrain := range constrains {
 		if res := re.FindStringSubmatch(constrain); res != nil {
