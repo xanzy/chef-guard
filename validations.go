@@ -85,7 +85,7 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 	if cg.Cookbook.Metadata.Dependencies != nil {
 		if errCode, err := cg.checkDependencies(parseCookbookVersions(cg.Cookbook.Metadata.Dependencies)); err != nil {
 			if errCode == http.StatusPreconditionFailed {
-				err = fmt.Errorf("\n=== Dependencies errors found ===\n"+
+				err = fmt.Errorf("\n=== Dependency errors found ===\n"+
 					"%s\n"+
 					"=================================\n", err)
 			}
@@ -153,6 +153,7 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 }
 
 func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, error) {
+	unfrozen := []string{}
 	for name, versions := range constrains {
 		for _, version := range versions {
 			if version == "0.0.0" {
@@ -163,9 +164,12 @@ func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, err
 				return http.StatusBadGateway, err
 			}
 			if !frozen {
-				return http.StatusPreconditionFailed, fmt.Errorf("You are depending on the %s cookbook version %s which isn't frozen! Please freeze the cookbook first before depending on it!", name, version)
+				unfrozen = append(unfrozen, fmt.Sprintf("%s version %s", name, version))
 			}
 		}
+	}
+	if len(unfrozen) > 0 {
+		return http.StatusPreconditionFailed, fmt.Errorf("You are depending on unfrozen cookbook(s)! Please freeze the following cookbook(s) before depending on them:\n - %s", strings.Join(unfrozen, "\n - "))
 	}
 	return 0, nil
 }

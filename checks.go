@@ -59,7 +59,8 @@ func runFoodcritic(org, cookbookPath string) (int, error) {
 		return http.StatusBadGateway, fmt.Errorf("Failed to execute foodcritic tests: %s - %s", output, err)
 	}
 	if strings.TrimSpace(string(output)) != "" {
-		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Foodcritic errors found ===\n%s\n===============================\n", strings.TrimSpace(string(output)))
+		errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
+		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Foodcritic errors found ===\n%s\n===============================\n", errText)
 	}
 	return 0, nil
 }
@@ -85,7 +86,8 @@ func runRubocop(cookbookPath string) (int, error) {
 		return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
 	}
 	if strings.TrimSpace(string(output)) != "" {
-		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", strings.TrimSpace(string(output)))
+		errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
+		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", errText)
 	}
 	return 0, nil
 }

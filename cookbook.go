@@ -213,8 +213,10 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) {
 			if err := cg.publishCookbook(); err != nil {
 				errText := err.Error()
-				if err := untagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version); err != nil {
-					errText = fmt.Sprintf("%s - NOTE: Failed to untag the repo during cleanup!", errText)
+				if !cg.SourceCookbook.tagged {
+					if err := untagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version); err != nil {
+						errText = fmt.Sprintf("%s - NOTE: Failed to untag the repo during cleanup!", errText)
+					}
 				}
 				return http.StatusBadGateway, fmt.Errorf(errText)
 			}
