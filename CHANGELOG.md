@@ -1,6 +1,14 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.3.2
+-----
+- Updated the error output to show files related to the cookbook (issue #25)
+- Changed the dependecy check so it now outputs all dependency errors at once (issue #26)
+- Fixed a bug where Chef-Guard would untag manually tagged Github repo's when uploading to the supermarket failed (issue #29)
+- Prevent community cookbooks that are forked from being uploaded to your private Supermarket (issue #30)
+- Updated chef-golang dependency
+
 0.3.1
 -----
 - Fixed typo in error message
