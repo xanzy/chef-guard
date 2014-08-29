@@ -206,15 +206,15 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 	if !cg.SourceCookbook.artifact {
 		if !cg.SourceCookbook.tagged {
 			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
-			if err := tagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
+			if err := tagCookbookRepo(cg.SourceCookbook.githubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
 				return http.StatusBadGateway, err
 			}
 		}
-		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) {
+		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) && cg.SourceCookbook.private {
 			if err := cg.publishCookbook(); err != nil {
 				errText := err.Error()
 				if !cg.SourceCookbook.tagged {
-					if err := untagCookbookRepo(cg.SourceCookbook.gitHubOrg, cg.Cookbook.Name, cg.Cookbook.Version); err != nil {
+					if err := untagCookbookRepo(cg.SourceCookbook.githubOrg, cg.Cookbook.Name, cg.Cookbook.Version); err != nil {
 						errText = fmt.Sprintf("%s - NOTE: Failed to untag the repo during cleanup!", errText)
 					}
 				}

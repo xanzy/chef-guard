@@ -41,14 +41,14 @@ type ErrorInfo struct {
 }
 
 type SourceCookbook struct {
-	artifact         bool
-	tagged           bool
-	gitHubOrg        string
-	File             string   `json:"file,omitempty"`
-	DownloadURL      *url.URL `json:"url"`
-	EndpointPriority int      `json:"endpoint_priority"`
-	LocationType     string   `json:"location_type"`
-	LocationPath     string   `json:"location_path,omitempty"`
+	artifact     bool
+	private      bool
+	tagged       bool
+	githubOrg    string
+	File         string   `json:"file,omitempty"`
+	DownloadURL  *url.URL `json:"url"`
+	LocationType string   `json:"location_type"`
+	LocationPath string   `json:"location_path,omitempty"`
 }
 
 type Constraints struct {
@@ -324,6 +324,7 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 		return nil, errCode, err
 	}
 	if sc != nil {
+		sc.private = false
 		return sc, 0, nil
 	}
 	if errCode == 1 {
@@ -333,6 +334,7 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 		}
 		if sc != nil {
 			// Do additional tests to check for a PR!
+			sc.private = false
 			return sc, 0, nil
 		}
 		return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload '%s' version '%s' which is a\n"+
@@ -357,6 +359,7 @@ func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, er
 		return nil, errCode, err
 	}
 	if sc != nil {
+		sc.private = true
 		return sc, 0, nil
 	}
 	if getEffectiveConfig("SearchGithub", org).(bool) {
@@ -370,6 +373,7 @@ func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, er
 			return nil, http.StatusBadGateway, err
 		}
 		if sc != nil {
+			sc.private = true
 			return sc, 0, nil
 		}
 	}
@@ -453,7 +457,7 @@ func searchGithub(orgs []string, name, version string, tagsOnly bool) (*SourceCo
 			sc := &SourceCookbook{LocationType: "github"}
 			sc.artifact = false
 			sc.tagged = tagged
-			sc.gitHubOrg = org
+			sc.githubOrg = org
 			sc.DownloadURL = link
 			return sc, nil
 		}
@@ -465,11 +469,11 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 	if sc.LocationType != "github" {
 		return http.DefaultClient, nil
 	}
-	if _, found := cfg.Github[sc.gitHubOrg]; !found {
-		return nil, fmt.Errorf("No Github config specified for organization: %s!", sc.gitHubOrg)
+	if _, found := cfg.Github[sc.githubOrg]; !found {
+		return nil, fmt.Errorf("No Github config specified for organization: %s!", sc.githubOrg)
 	}
 	t := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Github[sc.gitHubOrg].SSLNoVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Github[sc.githubOrg].SSLNoVerify},
 	}
 	return &http.Client{Transport: t}, nil
 }
