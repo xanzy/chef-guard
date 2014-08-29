@@ -34,8 +34,8 @@
 		},
 		{
 			"ImportPath": "github.com/marpaia/chef-golang",
-			"Comment": "v0.1.0-4-g1844ec0",
-			"Rev": "1844ec01f10097c3fac87eb1877cce29a752b065"
+			"Comment": "v0.1.0-9-g89f0d0c",
+			"Rev": "89f0d0cdd0068c39e1f90f5e657b7c82899fc2c8"
 		},
 		{
 			"ImportPath": "github.com/marpaia/graphite-golang",
