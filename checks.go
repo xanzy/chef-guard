@@ -77,7 +77,7 @@ func getFoodcriticArgs(org, cookbookPath string) []string {
 		args = append(args, fmt.Sprintf("-t ~%s", strings.TrimSpace(excl)))
 	}
 	if cfg.Default.IncludeFCs != "" {
-		args = append(args, fmt.Sprintf("-I %s", cfg.Default.IncludeFCs))
+		args = append(args, "-I", cfg.Default.IncludeFCs)
 	}
 	return append(args, "-B", cookbookPath)
 }
