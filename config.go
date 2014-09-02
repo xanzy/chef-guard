@@ -46,6 +46,7 @@ type Config struct {
 		Blacklist       string
 		GitOrganization string
 		GitCookbookOrgs string
+		IncludeFCs      string
 		ExcludeFCs      string
 	}
 	Customer map[string]*struct {
