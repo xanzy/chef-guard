@@ -3,7 +3,7 @@ Chef-Guard CHANGELOG
 
 0.3.3
 -----
-- Added option to execute custom foodcritic tests
+- Added a configuration option to execute custom foodcritic tests
 
 0.3.2
 -----
