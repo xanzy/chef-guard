@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.3.3
+-----
+- Added option to execute custom foodcritic tests
+
 0.3.2
 -----
 - Updated the error output to show files related to the cookbook (issue #25)
