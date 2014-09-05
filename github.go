@@ -86,8 +86,6 @@ func (cg *ChefGuard) syncedGitUpdate(action string, body []byte) {
 	}
 	token := <-ms.GetToken(cg.Repo)
 	defer func() {
-		// Sleep 1 second to prevent rapid successive calls to the Github contents API (known Github bug)
-		time.Sleep(1 * time.Second)
 		ms.ReturnToken(cg.Repo) <- token
 	}()
 	config, err := remarshalConfig(action, body)
@@ -126,8 +124,6 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 	if resp != nil && resp.Response.StatusCode == http.StatusUnauthorized {
 		return nil, fmt.Errorf("The token configured for Github organization %s is not valid!", cfg.Default.GitOrganization)
 	}
-	// Sleep 1 second to prevent rapid successive calls to the Github contents API (known Github bug)
-	time.Sleep(1 * time.Second)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusNotFound {
 			if action == "DELETE" {
