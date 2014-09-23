@@ -64,7 +64,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
-		if getEffectiveConfig("ValidateChanges", cg.Organization).(bool) && r.Method != "DELETE" {
+		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "enforced" && r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {
 				errorHandler(w, err.Error(), errCode)
 				return
@@ -100,6 +100,12 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 				go cg.syncedGitUpdate(r.Method, respBody)
 			} else {
 				go cg.syncedGitUpdate(r.Method, reqBody)
+			}
+		}
+		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" && r.Method != "DELETE" {
+			if errCode, err := cg.validateConstraints(reqBody); err != nil {
+				errorHandler(w, err.Error(), errCode)
+				return
 			}
 		}
 		copyHeaders(w.Header(), resp.Header)

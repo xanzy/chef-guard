@@ -141,22 +141,44 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 	}
 	if c.CookbookVersions != nil {
 		if errCode, err := cg.checkDependencies(parseCookbookVersions(c.CookbookVersions)); err != nil {
+			if errCode == http.StatusPreconditionFailed {
+				err = cg.formatConstraintsError(err)
+			}
 			return errCode, err
 		}
 	}
 	if c.RunList != nil {
 		if errCode, err := cg.checkDependencies(parseRunlists(c.RunList)); err != nil {
+			if errCode == http.StatusPreconditionFailed {
+				err = cg.formatConstraintsError(err)
+			}
 			return errCode, err
 		}
 	}
 	return 0, nil
 }
 
+func (cg *ChefGuard) formatConstraintsError(err error) error {
+	if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" {
+		return fmt.Errorf("\n===== Cookbook Constrain errors found =====\n"+
+			"%s\n"+
+			"\nRUNNNING PERMISSIVE MODE: CHANGES ARE SAVED\n"+
+			"===========================================\n", err)
+	}
+	return fmt.Errorf("\n=== Cookbook Constrain errors found ===\n"+
+		"%s\n"+
+		"=======================================\n", err)
+}
+
 func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, error) {
-	unfrozen := []string{}
+	errors := []string{}
 	for name, versions := range constrains {
 		for _, version := range versions {
 			if version == "0.0.0" {
+				continue
+			}
+			if strings.HasPrefix(version, "BAD") {
+				errors = append(errors, fmt.Sprintf("constrain '%s' for %s needs to be more specific (= x.x.x)", strings.TrimPrefix(version, "BAD"), name))
 				continue
 			}
 			frozen, err := cg.cookbookFrozen(name, version)
@@ -164,12 +186,12 @@ func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, err
 				return http.StatusBadGateway, err
 			}
 			if !frozen {
-				unfrozen = append(unfrozen, fmt.Sprintf("%s version %s", name, version))
+				errors = append(errors, fmt.Sprintf("%s version %s needs to be frozen", name, version))
 			}
 		}
 	}
-	if len(unfrozen) > 0 {
-		return http.StatusPreconditionFailed, fmt.Errorf("You are depending on unfrozen cookbook(s)! Please freeze the following cookbook(s) before depending on them:\n - %s", strings.Join(unfrozen, "\n - "))
+	if len(errors) > 0 {
+		return http.StatusPreconditionFailed, fmt.Errorf(" - %s", strings.Join(errors, "\n - "))
 	}
 	return 0, nil
 }
@@ -485,6 +507,8 @@ func parseCookbookVersions(constrains map[string]string) map[string][]string {
 		if res := re.FindStringSubmatch(constrain); res != nil {
 			version := res[1]
 			cbs[name] = []string{version}
+		} else {
+			cbs[name] = []string{"BAD" + constrain}
 		}
 	}
 	return cbs
