@@ -83,7 +83,7 @@ func (cg *ChefGuard) checkCookbookFrozen() (int, error) {
 
 func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 	if cg.Cookbook.Metadata.Dependencies != nil {
-		if errCode, err := cg.checkDependencies(parseCookbookVersions(cg.Cookbook.Metadata.Dependencies)); err != nil {
+		if errCode, err := cg.checkDependencies(parseCookbookVersions(cg.Cookbook.Metadata.Dependencies), false); err != nil {
 			if errCode == http.StatusPreconditionFailed {
 				err = fmt.Errorf("\n=== Dependency errors found ===\n"+
 					"%s\n"+
@@ -140,7 +140,7 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 		return http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
 	}
 	if c.CookbookVersions != nil {
-		if errCode, err := cg.checkDependencies(parseCookbookVersions(c.CookbookVersions)); err != nil {
+		if errCode, err := cg.checkDependencies(parseCookbookVersions(c.CookbookVersions), true); err != nil {
 			if errCode == http.StatusPreconditionFailed {
 				err = cg.formatConstraintsError(err)
 			}
@@ -148,7 +148,7 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 		}
 	}
 	if c.RunList != nil {
-		if errCode, err := cg.checkDependencies(parseRunlists(c.RunList)); err != nil {
+		if errCode, err := cg.checkDependencies(parseRunlists(c.RunList), true); err != nil {
 			if errCode == http.StatusPreconditionFailed {
 				err = cg.formatConstraintsError(err)
 			}
@@ -160,25 +160,27 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 
 func (cg *ChefGuard) formatConstraintsError(err error) error {
 	if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" {
-		return fmt.Errorf("\n===== Cookbook Constrain errors found =====\n"+
-			"%s\n"+
-			"\nRUNNNING PERMISSIVE MODE: CHANGES ARE SAVED\n"+
+		return fmt.Errorf("\n==== Cookbook Constraints errors found ====\n"+
+			"RUNNNING PERMISSIVE MODE: CHANGES ARE SAVED\n"+
+			"\n%s\n"+
 			"===========================================\n", err)
 	}
-	return fmt.Errorf("\n=== Cookbook Constrain errors found ===\n"+
+	return fmt.Errorf("\n=== Cookbook Constraints errors found ===\n"+
 		"%s\n"+
-		"=======================================\n", err)
+		"=========================================\n", err)
 }
 
-func (cg *ChefGuard) checkDependencies(constrains map[string][]string) (int, error) {
+func (cg *ChefGuard) checkDependencies(constraints map[string][]string, validateConstraints bool) (int, error) {
 	errors := []string{}
-	for name, versions := range constrains {
+	for name, versions := range constraints {
 		for _, version := range versions {
-			if version == "0.0.0" {
+			if version == "0.0.0" || version == "BAD>= 0.0.0" {
 				continue
 			}
 			if strings.HasPrefix(version, "BAD") {
-				errors = append(errors, fmt.Sprintf("constrain '%s' for %s needs to be more specific (= x.x.x)", strings.TrimPrefix(version, "BAD"), name))
+				if validateConstraints {
+					errors = append(errors, fmt.Sprintf("constraint '%s' for %s needs to be more specific (= x.x.x)", strings.TrimPrefix(version, "BAD"), name))
+				}
 				continue
 			}
 			frozen, err := cg.cookbookFrozen(name, version)
@@ -500,15 +502,15 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 	return &http.Client{Transport: t}, nil
 }
 
-func parseCookbookVersions(constrains map[string]string) map[string][]string {
+func parseCookbookVersions(constraints map[string]string) map[string][]string {
 	re := regexp.MustCompile(`^(?:= )?(\d+\.\d+\.\d+)$`)
 	cbs := make(map[string][]string)
-	for name, constrain := range constrains {
-		if res := re.FindStringSubmatch(constrain); res != nil {
+	for name, constraint := range constraints {
+		if res := re.FindStringSubmatch(constraint); res != nil {
 			version := res[1]
 			cbs[name] = []string{version}
 		} else {
-			cbs[name] = []string{"BAD" + constrain}
+			cbs[name] = []string{"BAD" + constraint}
 		}
 	}
 	return cbs
@@ -517,8 +519,8 @@ func parseCookbookVersions(constrains map[string]string) map[string][]string {
 func parseRunlists(runlists []string) map[string][]string {
 	re := regexp.MustCompile(`^.*\[(\w+).*@(\d+\.\d+\.\d+)\]$`)
 	cbs := make(map[string][]string)
-	for _, constrains := range runlists {
-		if res := re.FindStringSubmatch(constrains); res != nil {
+	for _, constraint := range runlists {
+		if res := re.FindStringSubmatch(constraint); res != nil {
 			name := res[1]
 			version := res[2]
 			if !contains(cbs[name], version) {
