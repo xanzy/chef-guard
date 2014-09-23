@@ -38,7 +38,7 @@ type Config struct {
 		MailServer      string
 		MailPort        int
 		MailRecipient   string
-		ValidateChanges bool
+		ValidateChanges string
 		CommitChanges   bool
 		MailChanges     bool
 		SearchGithub    bool
@@ -55,7 +55,7 @@ type Config struct {
 		MailServer      *string
 		MailPort        *int
 		MailRecipient   *string
-		ValidateChanges *bool
+		ValidateChanges *string
 		CommitChanges   *bool
 		MailChanges     *bool
 		SearchGithub    *bool

@@ -1,6 +1,12 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.4.0
+-----
+- Changed the ValidateChanges option to have mulitple modes instead of only true/false (on/off) (issue #36)
+- Changed the validation of contrains to require more specific constrains (= x.x.x)
+- Deleted the waiting time for Git API calls as this is not needed anymore since Github Enterprise version 11.10.34x
+
 0.3.3
 -----
 - Added a configuration option to execute custom foodcritic tests
