@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.4.1
+-----
+- Fixed some issues within the updated validateConstraints logic which in some cases prohibited uploading a community cookbook
+
 0.4.0
 -----
 - Changed the ValidateChanges option to have mulitple modes instead of only true/false (on/off) (issue #36)
