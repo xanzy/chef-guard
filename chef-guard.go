@@ -26,9 +26,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/bscott/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/google/go-github/github"
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 )
 
 // The ChefGuard struct holds all required info needed to process a request made through Chef-Guard
@@ -51,6 +51,7 @@ type ChefGuard struct {
 	TarFile        []byte
 }
 
+// Creates new ChefGuard object and returns ChefGuard, error
 func newChefGuard(r *http.Request) (*ChefGuard, error) {
 	cg := &ChefGuard{
 		User:         r.Header.Get("X-Ops-Userid"),
@@ -126,6 +127,7 @@ func main() {
 	}
 }
 
+// Starts the signal handler for config reload
 func startSignalHandler() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
@@ -150,6 +152,7 @@ func startSignalHandler() {
 	}()
 }
 
+// errorHandler takes a htp.ResponseWriter type, err string type and statusCode as an integer
 func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 	if statusCode == http.StatusPreconditionFailed {
 		WARNING.Println(err)
@@ -159,6 +162,7 @@ func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 	http.Error(w, err, statusCode)
 }
 
+// getOrgFromRequest returns the chef org if using Enterprise Chef
 func getOrgFromRequest(r *http.Request) string {
 	if !cfg.Chef.EnterpriseChef {
 		return ""
@@ -166,6 +170,7 @@ func getOrgFromRequest(r *http.Request) string {
 	return mux.Vars(r)["org"]
 }
 
+// Drops force from api call, no longer can you use --force to override a frozen cookbook
 func dropForce(r *http.Request) bool {
 	v := r.URL.Query()
 	if _, exists := v["force"]; exists {
