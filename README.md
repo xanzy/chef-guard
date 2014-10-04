@@ -1,4 +1,7 @@
 Chef-Guard [![Build Status](https://travis-ci.org/xanzy/chef-guard.svg)](https://travis-ci.org/xanzy/chef-guard)
+[![Gobuild Download](https://img.shields.io/badge/gobuild-download-green.svg?style=flat)](http://gobuild.io/github.com/xanzy/chef-guard)
+[![Gowalker Docs](http://gowalker.org/api/v1/badge)](https://gowalker.org/github.com/xanzy/chef-guard)
+
 ==========
 
 **_NOTE: Even while the code is considered to be stable, Chef-Guard is still in BETA! So there will be some rapid changes to the code until version 1.0.0 is released!_**
