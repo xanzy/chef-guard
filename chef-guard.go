@@ -26,7 +26,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/bscott/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
+	"github.com/xandy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/google/go-github/github"
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
 )
