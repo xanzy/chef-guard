@@ -23,6 +23,7 @@ import (
 	"strings"
 )
 
+// executeChecks method callfor the ChefGuard struct object
 func (cg *ChefGuard) executeChecks() (int, error) {
 	if cfg.Tests.Foodcritic != "" {
 		if errCode, err := runFoodcritic(cg.Organization, cg.CookbookPath); err != nil {
@@ -41,6 +42,7 @@ func (cg *ChefGuard) executeChecks() (int, error) {
 	return 0, nil
 }
 
+// If FailedCheck, returns a bool value
 func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 	WARNING.Printf("%s errors when uploading cookbook '%s' for '%s'\n", strings.Title(check), cg.Cookbook.Name, cg.User)
 	if getEffectiveConfig("Mode", cg.Organization).(string) == "permissive" && cg.ForcedUpload {
@@ -51,6 +53,7 @@ func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 	return false
 }
 
+// Runs foodcritic tests and returns status code with error struct object
 func runFoodcritic(org, cookbookPath string) (int, error) {
 	args := getFoodcriticArgs(org, cookbookPath)
 	cmd := exec.Command(cfg.Tests.Foodcritic, args...)
@@ -65,6 +68,7 @@ func runFoodcritic(org, cookbookPath string) (int, error) {
 	return 0, nil
 }
 
+// Retrieves foodcritic argruments
 func getFoodcriticArgs(org, cookbookPath string) []string {
 	excludes := cfg.Default.ExcludeFCs
 	custExcludes := getEffectiveConfig("ExcludeFCs", org)
@@ -82,6 +86,7 @@ func getFoodcriticArgs(org, cookbookPath string) []string {
 	return append(args, "-B", cookbookPath)
 }
 
+// Runs Rubocop tests
 func runRubocop(cookbookPath string) (int, error) {
 	cmd := exec.Command(cfg.Tests.Rubocop, cookbookPath)
 	output, err := cmd.CombinedOutput()

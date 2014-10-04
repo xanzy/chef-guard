@@ -28,6 +28,7 @@ import (
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/gcfg"
 )
 
+// Config struct with defaults
 type Config struct {
 	Default struct {
 		Listen          string
@@ -49,6 +50,7 @@ type Config struct {
 		IncludeFCs      string
 		ExcludeFCs      string
 	}
+	// Customer struct of map[string]
 	Customer map[string]*struct {
 		Mode            *string
 		MailDomain      *string
@@ -64,6 +66,7 @@ type Config struct {
 		GitCookbookOrgs *string
 		ExcludeFCs      *string
 	}
+	// Chef struct
 	Chef struct {
 		EnterpriseChef bool
 		Server         string
@@ -77,10 +80,12 @@ type Config struct {
 		User           string
 		Key            string
 	}
+	// Community stuct
 	Community struct {
 		Supermarket string
 		Forks       string
 	}
+	// SuperMarket struct
 	Supermarket struct {
 		Server      string
 		Port        string
@@ -89,14 +94,17 @@ type Config struct {
 		User        string
 		Key         string
 	}
+	// Graphite struct
 	Graphite struct {
 		Server string
 		Port   int
 	}
+	// Tests struct
 	Tests struct {
 		Foodcritic string
 		Rubocop    string
 	}
+	// Github struct as map[string]
 	Github map[string]*struct {
 		ServerURL   string
 		SSLNoVerify bool
@@ -106,6 +114,7 @@ type Config struct {
 
 var cfg Config
 
+// Load all the config!
 func loadConfig() error {
 	exe, err := osext.Executable()
 	if err != nil {
@@ -129,6 +138,7 @@ func loadConfig() error {
 	return nil
 }
 
+// Verify Github tokens
 func verifyGithubTokens() error {
 	for k, v := range cfg.Github {
 		if v.Token == "" {
@@ -138,6 +148,7 @@ func verifyGithubTokens() error {
 	return nil
 }
 
+// Verify Blacklists, return error value
 func verifyBlackLists() error {
 	rgx := strings.Split(cfg.Default.Blacklist, "|")
 	for _, r := range rgx {
@@ -158,6 +169,7 @@ func verifyBlackLists() error {
 	return nil
 }
 
+// Parse Paths, returns error value
 func parsePaths(ep string) error {
 	if !path.IsAbs(cfg.Default.Logfile) {
 		cfg.Default.Logfile = path.Join(ep, cfg.Default.Logfile)
@@ -171,6 +183,7 @@ func parsePaths(ep string) error {
 	return nil
 }
 
+// Get the Effective Config, returns inteface type
 func getEffectiveConfig(key, org string) interface{} {
 	if cfg.Chef.EnterpriseChef {
 		if c, found := cfg.Customer[org]; found {
