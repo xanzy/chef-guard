@@ -41,17 +41,6 @@ import (
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
 )
 
-type Sandbox struct {
-	SandboxId string                 `json:"sandbox_id"`
-	Uri       string                 `json:"uri"`
-	Checksums map[string]SandboxItem `json:"checksums"`
-}
-
-type SandboxItem struct {
-	Url         string `json:"url"`
-	NeedsUpload bool   `json:"needs_upload"`
-}
-
 func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if getEffectiveConfig("Mode", getOrgFromRequest(r)).(string) == "silent" && getEffectiveConfig("CommitChanges", getOrgFromRequest(r)).(bool) == false {
@@ -160,6 +149,17 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	}
 	cg.TarFile = buf.Bytes()
 	return nil
+}
+
+type Sandbox struct {
+	SandboxId string                 `json:"sandbox_id"`
+	Uri       string                 `json:"uri"`
+	Checksums map[string]SandboxItem `json:"checksums"`
+}
+
+type SandboxItem struct {
+	Url         string `json:"url"`
+	NeedsUpload bool   `json:"needs_upload"`
 }
 
 func (cg *ChefGuard) getOrganizationID() error {

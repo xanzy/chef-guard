@@ -95,6 +95,15 @@ func main() {
 	// Initialize Graphite connection
 	initGraphite()
 
+	// Initialize Graphite connection
+	if enableChefMetrics() {
+		session, err := initChefMetrics()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer session.Close()
+	}
+
 	// Setup the ErChef proxy
 	p := httputil.NewSingleHostReverseProxy(u)
 
@@ -164,6 +173,15 @@ func getOrgFromRequest(r *http.Request) string {
 		return ""
 	}
 	return mux.Vars(r)["org"]
+}
+
+func enableChefMetrics() bool {
+	for org, _ := range cfg.Customer {
+		if getEffectiveConfig("SaveChefMetrics", org).(bool) {
+			return true
+		}
+	}
+	return cfg.Default.SaveChefMetrics
 }
 
 func dropForce(r *http.Request) bool {

@@ -26,12 +26,9 @@ import (
 	"strings"
 
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
+	"gopkg.in/mgo.v2/bson"
 )
-
-type changeDetails struct {
-	Item string
-	Type string
-}
 
 type Name struct {
 	Name    string `json:"name"`
@@ -69,6 +66,15 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 				errorHandler(w, err.Error(), errCode)
 				return
 			}
+		}
+		if getEffectiveConfig("SaveChefMetrics", cg.Organization).(bool) == true && mux.Vars(r)["type"] == "nodes" && strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") && r.Method == "PUT" {
+			var d chef.Node
+			if err := bson.Unmarshal([]byte(reqBody), &d); err != nil {
+				// Needs more details!
+				errorHandler(w, err.Error(), http.StatusBadGateway)
+				return
+			}
+			chefmetrics.Insert(d)
 		}
 		if getEffectiveConfig("CommitChanges", cg.Organization).(bool) == false || (strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") && r.Header.Get("X-Ops-Request-Source") != "web") {
 			p.ServeHTTP(w, r)
@@ -112,6 +118,11 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 		w.WriteHeader(resp.StatusCode)
 		w.Write(respBody)
 	}
+}
+
+type changeDetails struct {
+	Item string
+	Type string
 }
 
 func getChangeDetails(r *http.Request, body []byte) (*changeDetails, error) {
