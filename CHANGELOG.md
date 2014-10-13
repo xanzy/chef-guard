@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.4.3
+-----
+- Fixed logic error in the getChangeDetails func, where the extention '.json' was sometimes left out and sometimes added twice
+
 0.4.2
 -----
 - Fixed issue #35 by making sure all data bag items are removed when tha bag itself is removed

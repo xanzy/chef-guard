@@ -137,7 +137,7 @@ func getChangeDetails(r *http.Request, body []byte) (*changeDetails, error) {
 			if err != nil {
 				return nil, err
 			}
-			cd.Item = n.Name
+			cd.Item = fmt.Sprintf("%s.json", n.Name)
 		}
 	}
 	// When changing data bags, the name of the bag should also be in cd.Item
@@ -147,7 +147,7 @@ func getChangeDetails(r *http.Request, body []byte) (*changeDetails, error) {
 		if cd.Item == "" {
 			cd.Item = fmt.Sprintf("%s", v["bag"])
 		} else {
-			cd.Item = fmt.Sprintf("%s/%s.json", v["bag"], cd.Item)
+			cd.Item = fmt.Sprintf("%s/%s", v["bag"], cd.Item)
 		}
 		cd.Type = "data_bags"
 	} else {

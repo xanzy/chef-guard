@@ -1,4 +1,4 @@
-Chef-Guard [![Build Status](https://travis-ci.org/xanzy/chef-guard.svg)](https://travis-ci.org/xanzy/chef-guard) [![Build Status](https://drone.io/github.com/xanzy/chef-guard/status.png)](https://drone.io/github.com/xanzy/chef-guard/latest) [![GoDoc](https://godoc.org/github.com/xanzy/chef-guard?status.svg)](https://godoc.org/github.com/xanzy/chef-guard)
+Chef-Guard [![Build Status](https://travis-ci.org/xanzy/chef-guard.svg)](https://travis-ci.org/xanzy/chef-guard) [![GoDoc](https://godoc.org/github.com/xanzy/chef-guard?status.svg)](https://godoc.org/github.com/xanzy/chef-guard)
 ==========
 
 **_NOTE: Even while the code is considered to be stable, Chef-Guard is still in BETA! So there will be some rapid changes to the code until version 1.0.0 is released!_**
