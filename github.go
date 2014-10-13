@@ -139,7 +139,8 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 			return nil, err
 		}
 	} else {
-		if file != nil {
+		switch {
+		case file != nil:
 			opts.SHA = file.SHA
 			if action == "DELETE" {
 				msg := fmt.Sprintf("Config for %s %s deleted by Chef-Guard", strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
@@ -154,19 +155,19 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 					return nil, err
 				}
 			}
-		}
-		if dir != nil && action == "DELETE" {
+		case dir != nil && action == "DELETE":
 			for _, file := range dir {
 				opts.SHA = file.SHA
 				msg := fmt.Sprintf("Config for %s %s deleted by Chef-Guard", strings.TrimSuffix(*file.Name, ".json"), strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
-				if r, _, err = cg.gitClient.Repositories.DeleteFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, file.Name), opts); err != nil {
+				if r, _, err = cg.gitClient.Repositories.DeleteFile(cfg.Default.GitOrganization, cg.Repo, *file.Path, opts); err != nil {
 					return nil, err
 				}
 			}
+		default:
+			return nil, fmt.Errorf("Unknown error while getting file or directory content of %s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item)
 		}
 
-		return nil, fmt.Errorf("Unknown error while getting file or directory content of %s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item)
 	}
 	return r, nil
 }
