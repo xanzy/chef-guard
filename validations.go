@@ -279,7 +279,7 @@ func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
 }
 
 func (cg *ChefGuard) ignoreThisFile(file string) (bool, error) {
-	if file == "metadata.rb" || file == "metadata.json" {
+	if file == "metadata.rb" || file == "metadata.json" || strings.HasPrefix(file, "spec/") {
 		return true, nil
 	}
 	if ignore, err := pathspec.GitIgnore(bytes.NewReader(cg.GitIgnoreFile), file); ignore || err != nil {
