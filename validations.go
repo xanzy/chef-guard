@@ -230,7 +230,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 		} else {
 			ignore, err := cg.ignoreThisFile(file)
 			if err != nil {
-				return http.StatusBadGateway, fmt.Errorf(err)
+				return http.StatusBadGateway, err
 			}
 			if !ignore {
 				missing = append(missing, file)
@@ -247,7 +247,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 		for file, _ := range sh {
 			ignore, err := cg.ignoreThisFile(file)
 			if err != nil {
-				return http.StatusBadGateway, fmt.Errorf(err)
+				return http.StatusBadGateway, err
 			}
 			if !ignore {
 				missing = append(missing, file)
