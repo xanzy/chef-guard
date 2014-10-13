@@ -110,13 +110,13 @@ func main() {
 	// Configure all needed handlers
 	rtr := mux.NewRouter()
 	if cfg.Chef.EnterpriseChef {
-		rtr.Path("/organizations/{org}/{type:data}/{bag}").HandlerFunc(processChange(p)).Methods("POST")
+		rtr.Path("/organizations/{org}/{type:data}/{bag}").HandlerFunc(processChange(p)).Methods("POST", "DELETE")
 		rtr.Path("/organizations/{org}/{type:data}/{bag}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/organizations/{org}/{type:environments|nodes|roles}").HandlerFunc(processChange(p)).Methods("POST")
 		rtr.Path("/organizations/{org}/{type:environments|nodes|roles}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/organizations/{org}/{type:cookbooks}/{name}/{version}").HandlerFunc(processCookbook(p)).Methods("PUT", "DELETE")
 	} else {
-		rtr.Path("/{type:data}/{bag}").HandlerFunc(processChange(p)).Methods("POST")
+		rtr.Path("/{type:data}/{bag}").HandlerFunc(processChange(p)).Methods("POST", "DELETE")
 		rtr.Path("/{type:data}/{bag}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/{type:environments|nodes|roles}").HandlerFunc(processChange(p)).Methods("POST")
 		rtr.Path("/{type:environments|nodes|roles}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")

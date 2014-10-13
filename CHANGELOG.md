@@ -1,6 +1,11 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.5.0 (UNRELEASED)
+------------------
+- Moving to drone.io for automated building and testing
+- Fixed issue #35 by making sure all data bag items are removed when tha bag itself is removed
+
 0.4.1
 -----
 - Fixed some issues within the updated validateConstraints logic which in some cases prohibited uploading a community cookbook

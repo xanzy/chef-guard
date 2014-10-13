@@ -26,8 +26,6 @@ import (
 	"strings"
 
 	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Name struct {
@@ -38,7 +36,7 @@ type Name struct {
 }
 
 func unmarshalName(body []byte) (*Name, error) {
-	n := new(Name)
+	var n Name
 	if err := json.Unmarshal(body, &n); err != nil {
 		return nil, err
 	}
@@ -46,7 +44,7 @@ func unmarshalName(body []byte) (*Name, error) {
 	if n.RawData.Id != "" {
 		n.Name = n.RawData.Id
 	}
-	return n, nil
+	return &n, nil
 }
 
 func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
@@ -68,6 +66,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			}
 		}
 		if getEffectiveConfig("SaveChefMetrics", cg.Organization).(bool) == true && mux.Vars(r)["type"] == "nodes" && strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") && r.Method == "PUT" {
+			/* WORK IN PROGRESS
 			var d chef.Node
 			if err := bson.Unmarshal([]byte(reqBody), &d); err != nil {
 				// Needs more details!
@@ -75,6 +74,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 				return
 			}
 			chefmetrics.Insert(d)
+			*/
 		}
 		if getEffectiveConfig("CommitChanges", cg.Organization).(bool) == false || (strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") && r.Header.Get("X-Ops-Request-Source") != "web") {
 			p.ServeHTTP(w, r)
@@ -130,7 +130,7 @@ func getChangeDetails(r *http.Request, body []byte) (*changeDetails, error) {
 	v := mux.Vars(r)
 	// Resolve the name either directly or by unmarshalling the request body
 	if _, found := v["name"]; found {
-		cd.Item = v["name"]
+		cd.Item = fmt.Sprintf("%s.json", v["name"])
 	} else {
 		n, err := unmarshalName(body)
 		if err != nil {
@@ -138,10 +138,15 @@ func getChangeDetails(r *http.Request, body []byte) (*changeDetails, error) {
 		}
 		cd.Item = n.Name
 	}
-	// When changing data bags, the name of the bag should also be in cg.Vars["name"]
+	// When changing data bags, the name of the bag should also be in cd.Item
 	// and the type should be set to "data_bags"
 	if _, found := v["bag"]; found {
-		cd.Item = fmt.Sprintf("%s/%s", v["bag"], cd.Item)
+		// If no item is found by now, set the item to the whole bag instead of a single item
+		if cd.Item == "" {
+			cd.Item = fmt.Sprintf("%s", v["bag"])
+		} else {
+			cd.Item = fmt.Sprintf("%s/%s.json", v["bag"], cd.Item)
+		}
 		cd.Type = "data_bags"
 	} else {
 		cd.Type = v["type"]

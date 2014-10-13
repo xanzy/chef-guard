@@ -91,15 +91,15 @@ func (cg *ChefGuard) syncedGitUpdate(action string, body []byte) {
 	config, err := remarshalConfig(action, body)
 	if err != nil {
 		itemType := strings.TrimSuffix(cg.ChangeDetails.Type, "s")
-		ERROR.Printf("Failed to convert %s config for %s %s for %s: %s", itemType, itemType, cg.ChangeDetails.Item, cg.User, err)
+		ERROR.Printf("Failed to convert %s config for %s %s for %s: %s", itemType, itemType, strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), cg.User, err)
 		return
 	}
 	if resp, err := cg.writeConfigToGit(action, config); err != nil {
 		itemType := strings.TrimSuffix(cg.ChangeDetails.Type, "s")
-		ERROR.Printf("Failed to update %s %s for %s in Github: %s", cg.ChangeDetails.Item, itemType, cg.User, err)
+		ERROR.Printf("Failed to update %s %s for %s in Github: %s", strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), itemType, cg.User, err)
 		return
 	} else {
-		if err := cg.mailChanges(fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), *resp.Commit.SHA, action); err != nil {
+		if err := cg.mailChanges(fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item), *resp.Commit.SHA, action); err != nil {
 			ERROR.Printf("Failed to send git spam: %s", err)
 			return
 		}
@@ -120,18 +120,18 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 	opts.Committer = &github.CommitAuthor{Name: &cg.User, Email: &mail}
 	opts.Content = config
 
-	file, _, resp, err := cg.gitClient.Repositories.GetContents(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), nil)
+	file, dir, resp, err := cg.gitClient.Repositories.GetContents(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item), nil)
 	if resp != nil && resp.Response.StatusCode == http.StatusUnauthorized {
 		return nil, fmt.Errorf("The token configured for Github organization %s is not valid!", cfg.Default.GitOrganization)
 	}
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusNotFound {
 			if action == "DELETE" {
-				return nil, fmt.Errorf("Failed to delete non-existing file %s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item)
+				return nil, fmt.Errorf("Failed to delete non-existing file or directory %s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item)
 			} else {
-				msg := fmt.Sprintf("Config for %s %s created by Chef-Guard", cg.ChangeDetails.Item, strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
+				msg := fmt.Sprintf("Config for %s %s created by Chef-Guard", strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
-				if r, _, err = cg.gitClient.Repositories.CreateFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
+				if r, _, err = cg.gitClient.Repositories.CreateFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
 					return nil, err
 				}
 			}
@@ -142,21 +142,31 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 		if file != nil {
 			opts.SHA = file.SHA
 			if action == "DELETE" {
-				msg := fmt.Sprintf("Config for %s %s deleted by Chef-Guard", cg.ChangeDetails.Item, strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
+				msg := fmt.Sprintf("Config for %s %s deleted by Chef-Guard", strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
-				if r, _, err = cg.gitClient.Repositories.DeleteFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
+				if r, _, err = cg.gitClient.Repositories.DeleteFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
 					return nil, err
 				}
 			} else {
-				msg := fmt.Sprintf("Config for %s %s updated by Chef-Guard", cg.ChangeDetails.Item, strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
+				msg := fmt.Sprintf("Config for %s %s updated by Chef-Guard", strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
-				if r, _, err = cg.gitClient.Repositories.UpdateFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
+				if r, _, err = cg.gitClient.Repositories.UpdateFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {
 					return nil, err
 				}
 			}
-		} else {
-			return nil, fmt.Errorf("Unknown error while getting file content of %s/%s.json", cg.ChangeDetails.Type, cg.ChangeDetails.Item)
 		}
+		if dir != nil && action == "DELETE" {
+			for _, file := range dir {
+				opts.SHA = file.SHA
+				msg := fmt.Sprintf("Config for %s %s deleted by Chef-Guard", strings.TrimSuffix(*file.Name, ".json"), strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
+				opts.Message = &msg
+				if r, _, err = cg.gitClient.Repositories.DeleteFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, file.Name), opts); err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		return nil, fmt.Errorf("Unknown error while getting file or directory content of %s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item)
 	}
 	return r, nil
 }
