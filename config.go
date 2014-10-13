@@ -39,6 +39,7 @@ type Config struct {
 		MailPort        int
 		MailRecipient   string
 		ValidateChanges string
+		SaveChefMetrics bool
 		CommitChanges   bool
 		MailChanges     bool
 		SearchGithub    bool
@@ -56,6 +57,7 @@ type Config struct {
 		MailPort        *int
 		MailRecipient   *string
 		ValidateChanges *string
+		SaveChefMetrics *bool
 		CommitChanges   *bool
 		MailChanges     *bool
 		SearchGithub    *bool
@@ -92,6 +94,13 @@ type Config struct {
 	Graphite struct {
 		Server string
 		Port   int
+	}
+	MongoDB struct {
+		Server     string
+		Database   string
+		Collection string
+		User       string
+		Password   string
 	}
 	Tests struct {
 		Foodcritic string
