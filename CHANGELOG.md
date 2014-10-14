@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.4.4
+-----
+- When you try to overwrite a frozen cookbook return a HTTP 409 error instead of a HTTP 412 so Berkshelf doesn't crash on it but just reports it.
+
 0.4.3
 -----
 - Fixed logic error in the getChangeDetails func, where the extention '.json' was sometimes left out and sometimes added twice
