@@ -4,6 +4,7 @@ Chef-Guard CHANGELOG
 0.4.5 (UNRELEASED)
 -----
 - Added the '.json' extention to cookbook auditing files saved in Github to have uniform names
+- Fixing issue #53 by making sure the config is checked and used to determine if we want to verify SSL
 
 0.4.4
 -----
