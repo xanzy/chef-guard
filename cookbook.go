@@ -227,7 +227,7 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 
 func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 	v := mux.Vars(r)
-	cg.ChangeDetails = &changeDetails{Item: fmt.Sprintf("%s-%s", v["name"], v["version"]), Type: v["type"]}
+	cg.ChangeDetails = &changeDetails{Item: fmt.Sprintf("%s-%s.json", v["name"], v["version"]), Type: v["type"]}
 	frozen := false
 	if cg.Cookbook != nil {
 		frozen = cg.Cookbook.Frozen
