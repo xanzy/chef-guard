@@ -125,21 +125,89 @@ func loadConfig() error {
 	if err := gcfg.ReadFileInto(&tmpConfig, exe+".conf"); err != nil {
 		return fmt.Errorf("Failed to parse config file '%s': %s", exe+".conf", err)
 	}
-	if err := verifyGithubTokens(); err != nil {
+	if err := verifyRequiredFields(&tmpConfig); err != nil {
 		return err
 	}
-	if err := verifyBlackLists(); err != nil {
+	if err := verifyGithubTokens(&tmpConfig); err != nil {
 		return err
 	}
-	if err := parsePaths(path.Dir(exe)); err != nil {
+	if err := verifyBlackLists(&tmpConfig); err != nil {
+		return err
+	}
+	if err := parsePaths(&tmpConfig, path.Dir(exe)); err != nil {
 		return err
 	}
 	cfg = tmpConfig
 	return nil
 }
 
-func verifyGithubTokens() error {
-	for k, v := range cfg.Github {
+func verifyRequiredFields(c *Config) error {
+	r := map[string]interface{}{
+		"Default->Listen":          c.Default.Listen,
+		"Default->Logfile":         c.Default.Logfile,
+		"Default->Tempdir":         c.Default.Tempdir,
+		"Default->Mode":            c.Default.Mode,
+		"Default->ValidateChanges": c.Default.ValidateChanges,
+		"Chef->Server":             c.Chef.Server,
+		"Chef->Port":               c.Chef.Port,
+		"Chef->ErchefIP":           c.Chef.ErchefIP,
+		"Chef->ErchefPort":         c.Chef.ErchefPort,
+		"Chef->S3Key":              c.Chef.S3Key,
+		"Chef->S3Secret":           c.Chef.S3Secret,
+		"Chef->Version":            c.Chef.Version,
+		"Chef->User":               c.Chef.User,
+		"Chef->Key":                c.Chef.Key,
+		"Community->Supermarket":   c.Community.Supermarket,
+	}
+
+	if c.Default.MailChanges {
+		r["Default->MailServer"] = c.Default.MailServer
+		r["Default->MailPort"] = c.Default.MailPort
+		r["Default->MailRecipient"] = c.Default.MailRecipient
+	}
+
+	if c.Default.CommitChanges {
+		r["Default->GitOrganization"] = c.Default.GitOrganization
+	}
+
+	if c.Default.SearchGithub {
+		r["Default->GitCookbookOrgs"] = c.Default.GitCookbookOrgs
+	}
+
+	if c.Default.SaveChefMetrics {
+		r["MongoDB->Server"] = c.MongoDB.Server
+		r["MongoDB->Database"] = c.MongoDB.Database
+		r["MongoDB->Collection"] = c.MongoDB.Collection
+		r["MongoDB->User"] = c.MongoDB.User
+		r["MongoDB->Password"] = c.MongoDB.Password
+	}
+
+	if c.Default.PublishCookbook {
+		r["Supermarket->Server"] = c.Supermarket.Server
+		r["Supermarket->Port"] = c.Supermarket.Port
+		r["Supermarket->Version"] = c.Supermarket.Version
+		r["Supermarket->User"] = c.Supermarket.User
+		r["Supermarket->Key"] = c.Supermarket.Key
+	}
+
+	for k, v := range r {
+		switch v := v.(type) {
+		case int:
+			if v == 0 {
+				return fmt.Errorf("Required configuration value missing for Section->Key: %s", k)
+			}
+		case string:
+			if v == "" {
+				return fmt.Errorf("Required configuration value missing for Section->Key: %s", k)
+			}
+		}
+	}
+
+	return nil
+}
+
+func verifyGithubTokens(c *Config) error {
+	for k, v := range c.Github {
 		if v.Token == "" {
 			return fmt.Errorf("No token found for Github organization %s! All configured organizations need to have a valid token.", k)
 		}
@@ -147,14 +215,14 @@ func verifyGithubTokens() error {
 	return nil
 }
 
-func verifyBlackLists() error {
-	rgx := strings.Split(cfg.Default.Blacklist, "|")
+func verifyBlackLists(c *Config) error {
+	rgx := strings.Split(c.Default.Blacklist, "|")
 	for _, r := range rgx {
 		if _, err := regexp.Compile(r); err != nil {
 			return fmt.Errorf("The Default blacklist contains a bad regex: %s", err)
 		}
 	}
-	for k, v := range cfg.Customer {
+	for k, v := range c.Customer {
 		if v.Blacklist != nil {
 			rgx := strings.Split(*v.Blacklist, "|")
 			for _, r := range rgx {
@@ -167,15 +235,15 @@ func verifyBlackLists() error {
 	return nil
 }
 
-func parsePaths(ep string) error {
-	if !path.IsAbs(cfg.Default.Logfile) {
-		cfg.Default.Logfile = path.Join(ep, cfg.Default.Logfile)
+func parsePaths(c *Config, ep string) error {
+	if !path.IsAbs(c.Default.Logfile) {
+		c.Default.Logfile = path.Join(ep, c.Default.Logfile)
 	}
-	if cfg.Tests.Foodcritic != "" && !path.IsAbs(cfg.Tests.Foodcritic) {
-		cfg.Tests.Foodcritic = path.Join(ep, cfg.Tests.Foodcritic)
+	if c.Tests.Foodcritic != "" && !path.IsAbs(c.Tests.Foodcritic) {
+		c.Tests.Foodcritic = path.Join(ep, c.Tests.Foodcritic)
 	}
-	if cfg.Tests.Rubocop != "" && !path.IsAbs(cfg.Tests.Rubocop) {
-		cfg.Tests.Rubocop = path.Join(ep, cfg.Tests.Rubocop)
+	if c.Tests.Rubocop != "" && !path.IsAbs(c.Tests.Rubocop) {
+		c.Tests.Rubocop = path.Join(ep, c.Tests.Rubocop)
 	}
 	return nil
 }
