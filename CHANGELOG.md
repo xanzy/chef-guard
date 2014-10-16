@@ -1,9 +1,16 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.4.5
+-----
+- Added the '.json' extention to cookbook auditing files saved in Github to have uniform names
+- Fixed issue #53 by making sure the config is checked and used to determine if we want to verify SSL
+- Fixed issue #54 by adding a check if a value is actually configued before using it
+- Added code to check if the config file contains values for all required fields
+
 0.4.4
 -----
-- When you try to overwrite a frozen cookbook return a HTTP 409 error instead of a HTTP 412 so Berkshelf doesn't crash on it but just reports it.
+- When you try to overwrite a frozen cookbook return a HTTP 409 error instead of a HTTP 412 so Berkshelf doesn't crash on it but just reports it
 
 0.4.3
 -----

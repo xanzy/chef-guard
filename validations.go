@@ -369,22 +369,24 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 }
 
 func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, error) {
-	var u string
-	switch cfg.Supermarket.Port {
-	case "80":
-		u = fmt.Sprintf("http://%s", cfg.Supermarket.Server)
-	case "443":
-		u = fmt.Sprintf("https://%s", cfg.Supermarket.Server)
-	default:
-		u = fmt.Sprintf("http://%s:%s", cfg.Supermarket.Server, cfg.Supermarket.Port)
-	}
-	sc, errCode, err := searchSupermarket(u, name, version)
-	if err != nil {
-		return nil, errCode, err
-	}
-	if sc != nil {
-		sc.private = true
-		return sc, 0, nil
+	if cfg.Supermarket.Server != "" {
+		var u string
+		switch cfg.Supermarket.Port {
+		case "80":
+			u = fmt.Sprintf("http://%s", cfg.Supermarket.Server)
+		case "443":
+			u = fmt.Sprintf("https://%s", cfg.Supermarket.Server)
+		default:
+			u = fmt.Sprintf("http://%s:%s", cfg.Supermarket.Server, cfg.Supermarket.Port)
+		}
+		sc, errCode, err := searchSupermarket(u, name, version)
+		if err != nil {
+			return nil, errCode, err
+		}
+		if sc != nil {
+			sc.private = true
+			return sc, 0, nil
+		}
 	}
 	if getEffectiveConfig("SearchGithub", org).(bool) {
 		orgList := cfg.Default.GitCookbookOrgs
@@ -392,7 +394,7 @@ func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, er
 		if orgList != custOrgList {
 			orgList = fmt.Sprintf("%s,%s", orgList, custOrgList)
 		}
-		sc, err = searchGithub(strings.Split(orgList, ","), name, version, false)
+		sc, err := searchGithub(strings.Split(orgList, ","), name, version, false)
 		if err != nil {
 			return nil, http.StatusBadGateway, err
 		}

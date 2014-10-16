@@ -23,6 +23,7 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -227,7 +228,7 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 
 func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 	v := mux.Vars(r)
-	cg.ChangeDetails = &changeDetails{Item: fmt.Sprintf("%s-%s", v["name"], v["version"]), Type: v["type"]}
+	cg.ChangeDetails = &changeDetails{Item: fmt.Sprintf("%s-%s.json", v["name"], v["version"]), Type: v["type"]}
 	frozen := false
 	if cg.Cookbook != nil {
 		frozen = cg.Cookbook.Frozen
@@ -245,7 +246,11 @@ func downloadCookbookFile(orgID, checksum string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.Get(u.String())
+	t := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
+	}
+	c := &http.Client{Transport: t}
+	resp, err := c.Get(u.String())
 	if err != nil {
 		return nil, err
 	}
