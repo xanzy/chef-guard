@@ -352,14 +352,16 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 		return sc, 0, nil
 	}
 	if errCode == 1 {
-		sc, err = searchGithub([]string{cfg.Community.Forks}, name, version, true)
-		if err != nil {
-			return nil, http.StatusBadGateway, err
-		}
-		if sc != nil {
-			// Do additional tests to check for a PR!
-			sc.private = false
-			return sc, 0, nil
+		if cfg.Community.Forks != "" {
+			sc, err = searchGithub([]string{cfg.Community.Forks}, name, version, true)
+			if err != nil {
+				return nil, http.StatusBadGateway, err
+			}
+			if sc != nil {
+				// Do additional tests to check for a PR!
+				sc.private = false
+				return sc, 0, nil
+			}
 		}
 		return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload '%s' version '%s' which is a\n"+
 			"non-existing version of a community cookbook! Make sure you are using\n"+
