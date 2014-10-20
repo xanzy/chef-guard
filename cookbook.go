@@ -107,8 +107,13 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
 
+	t := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
+	}
+	c := &http.Client{Transport: t}
+
 	for _, f := range cg.getAllCookbookFiles() {
-		content, err := downloadCookbookFile(*cg.OrganizationID, f.Checksum)
+		content, err := downloadCookbookFile(c, *cg.OrganizationID, f.Checksum)
 		if err != nil {
 			return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 		}
@@ -241,23 +246,22 @@ func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 	return []byte(details)
 }
 
-func downloadCookbookFile(orgID, checksum string) ([]byte, error) {
+func downloadCookbookFile(c *http.Client, orgID, checksum string) ([]byte, error) {
 	u, err := generateSignedURL(orgID, checksum)
 	if err != nil {
 		return nil, err
 	}
-	t := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
-	}
-	c := &http.Client{Transport: t}
 	resp, err := c.Get(u.String())
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
 		return nil, err
 	}
-	return dumpBody(resp)
+
+	return ioutil.ReadAll(resp.Body)
 }
 
 func generateSignedURL(orgID, checksum string) (*url.URL, error) {
@@ -288,10 +292,11 @@ func writeFileToDisk(filePath string, content io.Reader) error {
 	if err != nil {
 		return err
 	}
+	defer fo.Close()
+
 	if _, err := io.Copy(fo, content); err != nil {
 		return err
 	}
-	fo.Close()
 	return nil
 }
 
