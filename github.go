@@ -71,7 +71,8 @@ func setupGitClient() (*github.Client, error) {
 	}
 	gitClient := github.NewClient(t.Client())
 	if cfg.Github[cfg.Default.GitOrganization].ServerURL != "" {
-		u, err := url.Parse(cfg.Github[cfg.Default.GitOrganization].ServerURL)
+		// Make sure the URL ends with a single forward slash as the go-github package requires that
+		u, err := url.Parse(strings.TrimSuffix(cfg.Github[cfg.Default.GitOrganization].ServerURL, "/") + "/")
 		if err != nil {
 			return nil, fmt.Errorf("Failed to parse Github server URL %s: %s", cfg.Github[cfg.Default.GitOrganization].ServerURL, err)
 		}
@@ -190,7 +191,12 @@ func (cg *ChefGuard) mailChanges(file, sha, action string) error {
 		subject = fmt.Sprintf("[%s CHEF] deleted %s", strings.ToUpper(cg.Organization), file)
 	}
 	msg := createMessage(cg.Repo, *commit.Commit.Committer.Name, diff, subject)
-	return mailDiff(cg.Repo, *commit.Commit.Committer.Email, msg)
+
+	mail := getEffectiveConfig("MailSendBy", cg.Organization).(string)
+	if mail == "" {
+		mail = *commit.Commit.Committer.Email
+	}
+	return mailDiff(cg.Repo, mail, msg)
 }
 
 func (cg *ChefGuard) getDiff(sha string) (string, *github.RepositoryCommit, error) {
@@ -386,7 +392,8 @@ func getCustomClient(org string) (*github.Client, error) {
 	}
 	gitClient := github.NewClient(t.Client())
 	if git.ServerURL != "" {
-		u, err := url.Parse(git.ServerURL)
+		// Make sure the URL ends with a single forward slash as the go-github package requires that
+		u, err := url.Parse(strings.TrimSuffix(git.ServerURL, "/") + "/")
 		if err != nil {
 			return nil, fmt.Errorf("Failed to parse Github server URL %s: %s", git.ServerURL, err)
 		}
