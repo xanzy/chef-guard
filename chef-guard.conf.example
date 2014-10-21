@@ -2,22 +2,23 @@
   listen          = 127.0.0.2
   logfile         = /var/log/chef-guard.log
   tempdir         = /var/tmp/chef-guard
-  mode            = silent      # Valid options are 'silent', 'permissive' and 'enforced'
+  mode            = silent        # Valid options are 'silent', 'permissive' and 'enforced'
   maildomain      = company.com
   mailserver      = smtp.company.com
   mailport        = 25
+  mailsendby      =               # Leave blank to dynamically use the mailaddress of the user making the API call (preferred)
   mailrecipient   = chef-changes@company.com
-  validatechanges = silent      # Valid options are 'silent', 'permissive' and 'enforced'
+  validatechanges = silent        # Valid options are 'silent', 'permissive' and 'enforced'
   savechefmetrics = true
   commitchanges   = false
   mailchanges     = true
   searchgithub    = true
   publishcookbook = true
-  blacklist       =      # This can be multiple regexes divided by a ','
+  blacklist       =               # This can be multiple regexes divided by a ','
   gitorganization = chef-guard
-  gitcookbookorgs = org1, org2 # When using multiple orgs (divided by a ','), the order here determines the lookup order!
-  includefcs      =      # This should be the full path to a custom .rb file containing your custom checks
-  excludefcs      =      # This can be multiple FC's divided by a ','
+  gitcookbookorgs = org1, org2    # When using multiple orgs (divided by a ','), the order here determines the lookup order!
+  includefcs      =               # This should be the full path to a custom .rb file containing your custom checks
+  excludefcs      =               # This can be multiple FC's divided by a ','
 
 [chef]
   enterprisechef  = true
@@ -60,7 +61,7 @@
   rubocop         = /opt/chef/embedded/bin/rubocop
 
 [github "chef-guard"]
-  serverurl       =       # Empty means that it will use github.com
+  serverurl       =          # Empty means that it will use github.com
   sslnoverify     = false
   token           = xxx
 
@@ -76,4 +77,4 @@
 
 [customer "demo2"]
   mode            = enforced
-  gitcookbookorgs = demo2 # If a customer org is used in conjunction with default org(s), The default orgs are searched first!
+  gitcookbookorgs = demo2    # If a customer org is used in conjunction with default org(s), the default orgs are searched first!

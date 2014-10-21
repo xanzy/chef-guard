@@ -6,6 +6,8 @@ Chef-Guard CHANGELOG
 - Fixed an issue where file handles where not always released correctly
 - Added a check to verify if cfg.Community.Forks is actually configued before using it
 - Refactored the fix for issue #53 as the current fix wasn't effecient and caused 'too many open files' issues
+- Added a check to make sure all custom Github endpoints end with a single forward slash
+- Added a configuration option to specify a custom sender address used when sending the diffs
 
 0.4.5
 -----

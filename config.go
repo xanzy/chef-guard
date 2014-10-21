@@ -37,6 +37,7 @@ type Config struct {
 		MailDomain      string
 		MailServer      string
 		MailPort        int
+		MailSendBy      string
 		MailRecipient   string
 		ValidateChanges string
 		SaveChefMetrics bool
@@ -55,6 +56,7 @@ type Config struct {
 		MailDomain      *string
 		MailServer      *string
 		MailPort        *int
+		MailSendBy      *string
 		MailRecipient   *string
 		ValidateChanges *string
 		SaveChefMetrics *bool
