@@ -115,28 +115,21 @@ func main() {
 		rtr.Path("/organizations/{org}/{type:environments|nodes|roles}").HandlerFunc(processChange(p)).Methods("POST")
 		rtr.Path("/organizations/{org}/{type:environments|nodes|roles}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/organizations/{org}/{type:cookbooks}/{name}/{version}").HandlerFunc(processCookbook(p)).Methods("PUT", "DELETE")
-
-		rtr.Path("/organizations/chef-guard/time").HandlerFunc(timeHandler).Methods("GET")
-		if cfg.ChefClients.Path != "" {
-			rtr.Path("/organizations/chef-guard/metadata").HandlerFunc(metadataHandler).Methods("GET")
-			rtr.Path("/organizations/chef-guard/download").HandlerFunc(downloadHandler).Methods("GET")
-			rtr.PathPrefix("/organizations/chef-guard/clients").Handler(http.StripPrefix("/organizations/chef-guard/clients/", http.FileServer(http.Dir(cfg.ChefClients.Path))))
-		}
-
 	} else {
 		rtr.Path("/{type:data}/{bag}").HandlerFunc(processChange(p)).Methods("POST", "DELETE")
 		rtr.Path("/{type:data}/{bag}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/{type:environments|nodes|roles}").HandlerFunc(processChange(p)).Methods("POST")
 		rtr.Path("/{type:environments|nodes|roles}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/{type:cookbooks}/{name}/{version}").HandlerFunc(processCookbook(p)).Methods("PUT", "DELETE")
-
-		rtr.Path("/chef-guard/time").HandlerFunc(timeHandler).Methods("GET")
-		if cfg.ChefClients.Path != "" {
-			rtr.Path("/chef-guard/metadata").HandlerFunc(metadataHandler).Methods("GET")
-			rtr.Path("/chef-guard/download").HandlerFunc(downloadHandler).Methods("GET")
-			rtr.PathPrefix("/chef-guard/clients").Handler(http.StripPrefix("/chef-guard/clients/", http.FileServer(http.Dir(cfg.ChefClients.Path))))
-		}
 	}
+
+	// Adding some non-Chef endpoints here
+	rtr.Path("/chef-guard/time").HandlerFunc(timeHandler).Methods("GET")
+	if cfg.ChefClients.Path != "" {
+		rtr.Path("/chef-guard/{type:metadata|download}").HandlerFunc(processDownload).Methods("GET")
+		rtr.PathPrefix("/chef-guard/clients").Handler(http.StripPrefix("/chef-guard/clients/", http.FileServer(http.Dir(cfg.ChefClients.Path))))
+	}
+
 	rtr.NotFoundHandler = p
 	http.Handle("/", rtr)
 

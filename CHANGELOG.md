@@ -1,7 +1,7 @@
 Chef-Guard CHANGELOG
 ====================
 
-0.5.0 (UNRELEASED)
+0.5.0
 -----
 - Fixed an issue where file handles where not always released correctly
 - Added a check to verify if cfg.Community.Forks is actually configued before using it
