@@ -1,13 +1,15 @@
 Chef-Guard CHANGELOG
 ====================
 
-0.4.6 (UNRELEASED)
+0.5.0 (UNRELEASED)
 -----
 - Fixed an issue where file handles where not always released correctly
 - Added a check to verify if cfg.Community.Forks is actually configued before using it
 - Refactored the fix for issue #53 as the current fix wasn't effecient and caused 'too many open files' issues
 - Added a check to make sure all custom Github endpoints end with a single forward slash
 - Added a configuration option to specify a custom sender address used when sending the diffs
+- Added an additional (non-Chef) endpoint to download clients from
+- Added an additional (non-Chef) endpoint to get the server time from
 
 0.4.5
 -----
