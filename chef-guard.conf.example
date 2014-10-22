@@ -32,6 +32,9 @@
   user            = chef-guard
   key             = /opt/chef-guard/chef-guard.pem
 
+[chefclients]
+  path            = /opt/chef-guard/clients
+
 [community]
   supermarket     = https://supermarket.getchef.com
   forks           = org1

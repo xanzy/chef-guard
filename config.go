@@ -79,6 +79,9 @@ type Config struct {
 		User           string
 		Key            string
 	}
+	ChefClients struct {
+		Path string
+	}
 	Community struct {
 		Supermarket string
 		Forks       string
