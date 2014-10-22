@@ -272,16 +272,7 @@ func generateSignedURL(orgID, checksum string) (*url.URL, error) {
 	h.Write([]byte(stringToSign))
 	signature := url.QueryEscape(base64.StdEncoding.EncodeToString(h.Sum(nil)))
 
-	var baseURL string
-	switch cfg.Chef.Port {
-	case "443":
-		baseURL = fmt.Sprintf("https://%s", cfg.Chef.Server)
-	case "80":
-		baseURL = fmt.Sprintf("http://%s", cfg.Chef.Server)
-	default:
-		baseURL = fmt.Sprintf("%s:%s", cfg.Chef.Server, cfg.Chef.Port)
-	}
-	return url.Parse(fmt.Sprintf("%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s", baseURL, orgID, checksum, cfg.Chef.S3Key, expires, signature))
+	return url.Parse(fmt.Sprintf("%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s", getChefBaseURL(), orgID, checksum, cfg.Chef.S3Key, expires, signature))
 }
 
 func writeFileToDisk(filePath string, content io.Reader) error {
@@ -348,6 +339,19 @@ func checkHTTPResponse(resp *http.Response, allowedStates []int) error {
 		}
 	}
 	return fmt.Errorf(string(body))
+}
+
+func getChefBaseURL() string {
+	var baseURL string
+	switch cfg.Chef.Port {
+	case "443":
+		baseURL = "https://" + cfg.Chef.Server
+	case "80":
+		baseURL = "http://" + cfg.Chef.Server
+	default:
+		baseURL = cfg.Chef.Server + ":" + cfg.Chef.Port
+	}
+	return baseURL
 }
 
 func dumpBody(r interface{}) (body []byte, err error) {
