@@ -84,13 +84,15 @@ func getFoodcriticArgs(org, cookbookPath string) []string {
 
 func runRubocop(cookbookPath string) (int, error) {
 	cmd := exec.Command(cfg.Tests.Rubocop, cookbookPath)
+	cmd.Env = []string{"HOME=" + cfg.Default.Tempdir}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
-	}
-	if strings.TrimSpace(string(output)) != "" {
-		errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
-		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", errText)
+		if strings.Contains(string(output), "offenses detected") {
+			errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
+			return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", errText)
+		} else {
+			return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
+		}
 	}
 	return 0, nil
 }

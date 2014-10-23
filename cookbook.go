@@ -107,8 +107,13 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
 
+	t := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
+	}
+	c := &http.Client{Transport: t}
+
 	for _, f := range cg.getAllCookbookFiles() {
-		content, err := downloadCookbookFile(*cg.OrganizationID, f.Checksum)
+		content, err := downloadCookbookFile(c, *cg.OrganizationID, f.Checksum)
 		if err != nil {
 			return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 		}
@@ -241,23 +246,22 @@ func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 	return []byte(details)
 }
 
-func downloadCookbookFile(orgID, checksum string) ([]byte, error) {
+func downloadCookbookFile(c *http.Client, orgID, checksum string) ([]byte, error) {
 	u, err := generateSignedURL(orgID, checksum)
 	if err != nil {
 		return nil, err
 	}
-	t := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
-	}
-	c := &http.Client{Transport: t}
 	resp, err := c.Get(u.String())
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
 		return nil, err
 	}
-	return dumpBody(resp)
+
+	return ioutil.ReadAll(resp.Body)
 }
 
 func generateSignedURL(orgID, checksum string) (*url.URL, error) {
@@ -268,16 +272,7 @@ func generateSignedURL(orgID, checksum string) (*url.URL, error) {
 	h.Write([]byte(stringToSign))
 	signature := url.QueryEscape(base64.StdEncoding.EncodeToString(h.Sum(nil)))
 
-	var baseURL string
-	switch cfg.Chef.Port {
-	case "443":
-		baseURL = fmt.Sprintf("https://%s", cfg.Chef.Server)
-	case "80":
-		baseURL = fmt.Sprintf("http://%s", cfg.Chef.Server)
-	default:
-		baseURL = fmt.Sprintf("%s:%s", cfg.Chef.Server, cfg.Chef.Port)
-	}
-	return url.Parse(fmt.Sprintf("%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s", baseURL, orgID, checksum, cfg.Chef.S3Key, expires, signature))
+	return url.Parse(fmt.Sprintf("%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s", getChefBaseURL(), orgID, checksum, cfg.Chef.S3Key, expires, signature))
 }
 
 func writeFileToDisk(filePath string, content io.Reader) error {
@@ -288,10 +283,11 @@ func writeFileToDisk(filePath string, content io.Reader) error {
 	if err != nil {
 		return err
 	}
+	defer fo.Close()
+
 	if _, err := io.Copy(fo, content); err != nil {
 		return err
 	}
-	fo.Close()
 	return nil
 }
 
@@ -343,6 +339,19 @@ func checkHTTPResponse(resp *http.Response, allowedStates []int) error {
 		}
 	}
 	return fmt.Errorf(string(body))
+}
+
+func getChefBaseURL() string {
+	var baseURL string
+	switch cfg.Chef.Port {
+	case "443":
+		baseURL = "https://" + cfg.Chef.Server
+	case "80":
+		baseURL = "http://" + cfg.Chef.Server
+	default:
+		baseURL = cfg.Chef.Server + ":" + cfg.Chef.Port
+	}
+	return baseURL
 }
 
 func dumpBody(r interface{}) (body []byte, err error) {

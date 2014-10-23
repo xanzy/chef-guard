@@ -1,11 +1,22 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.5.0
+-----
+- Fixed an issue where file handles where not always released correctly
+- Added a check to verify if cfg.Community.Forks is actually configued before using it
+- Refactored the fix for issue #53 as the current fix wasn't effecient and caused 'too many open files' issues
+- Added a check to make sure all custom Github endpoints end with a single forward slash
+- Added a configuration option to specify a custom sender address used when sending the diffs
+- Added an additional (non-Chef) endpoint to download clients from
+- Added an additional (non-Chef) endpoint to get the server time from
+- Fixed a bug when running the Rubocop tests
+
 0.4.5
 -----
 - Added the '.json' extention to cookbook auditing files saved in Github to have uniform names
 - Fixed issue #53 by making sure the config is checked and used to determine if we want to verify SSL
-- Fixed issue #54 by adding a check if a value is actually configued before using it
+- Fixed issue #54 by adding a check to verify if a value is actually configued before using it
 - Added code to check if the config file contains values for all required fields
 
 0.4.4

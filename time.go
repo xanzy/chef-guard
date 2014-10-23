@@ -23,5 +23,13 @@ import (
 )
 
 func timeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "%s", time.Now())
+	switch r.FormValue("p") {
+	case "el":
+		fmt.Fprintf(w, `date -s "%s"`, time.Now().Format(`2 January 2006 15:04:05`))
+	case "windows":
+		fmt.Fprintf(w, "date %s\ntime %s", time.Now().Format("01-02-06"), time.Now().Format("15:04:05"))
+	default:
+		fmt.Fprintf(w, time.Now().Format(`2 January 2006 15:04:05`))
+	}
+	return
 }
