@@ -10,6 +10,7 @@ Chef-Guard CHANGELOG
 - Added a configuration option to specify a custom sender address used when sending the diffs
 - Added an additional (non-Chef) endpoint to download clients from
 - Added an additional (non-Chef) endpoint to get the server time from
+- Fixed a bug when running the Rubocop tests
 
 0.4.5
 -----
