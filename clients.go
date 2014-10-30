@@ -27,7 +27,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/gorilla/mux"
+	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
 )
 
 // Add files type and functions for the Sort interface
@@ -42,7 +42,7 @@ func (f files) Less(i, j int) bool {
 	parts_i := re.FindStringSubmatch(f[i])
 	parts_j := re.FindStringSubmatch(f[j])
 
-	for idx := 1; i < len(parts_i); i++ {
+	for idx := 1; idx < len(parts_i); idx++ {
 		// Convert the part to a int
 		i, err := strconv.Atoi(parts_i[idx])
 		if err != nil {
@@ -53,10 +53,15 @@ func (f files) Less(i, j int) bool {
 		if err != nil {
 			return false
 		}
+		// If equal, move on to the next part
+		if i == j {
+			continue
+		}
 		// Compare and do a descending sort
-		if j < i {
+		if i > j {
 			return true
 		}
+		return false
 	}
 	return false
 }

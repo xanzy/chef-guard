@@ -1,6 +1,11 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.5.1 (UNRELEASED)
+-----
+- Fixed an issue with the new clients endpoint
+- Updated the github.com/gorilla/mux dependency
+
 0.5.0
 -----
 - Fixed an issue where file handles where not always released correctly

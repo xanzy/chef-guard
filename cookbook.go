@@ -349,7 +349,7 @@ func getChefBaseURL() string {
 	case "80":
 		baseURL = "http://" + cfg.Chef.Server
 	default:
-		baseURL = cfg.Chef.Server + ":" + cfg.Chef.Port
+		baseURL = "http://" + cfg.Chef.Server + ":" + cfg.Chef.Port
 	}
 	return baseURL
 }
