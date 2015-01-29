@@ -127,7 +127,8 @@ func main() {
 	rtr.Path("/chef-guard/time").HandlerFunc(timeHandler).Methods("GET")
 	if cfg.ChefClients.Path != "" {
 		rtr.Path("/chef-guard/{type:metadata|download}").HandlerFunc(processDownload).Methods("GET")
-		rtr.PathPrefix("/chef-guard/clients").Handler(http.StripPrefix("/chef-guard/clients", http.FileServer(http.Dir(cfg.ChefClients.Path))))
+		rtr.Path("/chef-guard/clients").Handler(http.RedirectHandler("/chef-guard/clients/", http.StatusMovedPermanently))
+		rtr.PathPrefix("/chef-guard/clients/").Handler(http.StripPrefix("/chef-guard/clients/", http.FileServer(http.Dir(cfg.ChefClients.Path))))
 	}
 
 	rtr.NotFoundHandler = p

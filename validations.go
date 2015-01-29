@@ -69,10 +69,12 @@ func unmarshalConstraints(body []byte) (*Constraints, error) {
 }
 
 func (cg *ChefGuard) checkCookbookFrozen() (int, error) {
-	if frozen, err := cg.cookbookFrozen(cg.Cookbook.Name, cg.Cookbook.Version); err != nil {
+	frozen, err := cg.cookbookFrozen(cg.Cookbook.Name, cg.Cookbook.Version)
+	if err != nil {
 		return http.StatusBadGateway, err
-	} else if frozen {
-		return http.StatusConflict, fmt.Errorf("\n=== Cookbook Upload error found ===\n" +
+	}
+	if frozen {
+		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Cookbook Upload error found ===\n" +
 			"The cookbook you are trying to upload is frozen!\n" +
 			"It is not allowed to overwrite a frozen cookbook,\n" +
 			"so please bump the version and try again.\n" +

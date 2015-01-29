@@ -63,28 +63,33 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 				errorHandler(w, fmt.Sprintf("Failed to unmarshal body %s: %s", string(body), err), http.StatusBadGateway)
 				return
 			}
-			if getEffectiveConfig("Mode", cg.Organization).(string) != "silent" && cg.Cookbook.Frozen {
+			if getEffectiveConfig("Mode", cg.Organization).(string) != "silent" {
 				if errCode, err := cg.checkCookbookFrozen(); err != nil {
-					errorHandler(w, err.Error(), errCode)
-					return
-				}
-				cg.CookbookPath = path.Join(cfg.Default.Tempdir, fmt.Sprintf("%s-%s", r.Header.Get("X-Ops-Userid"), cg.Cookbook.Name))
-				if err := cg.processCookbookFiles(); err != nil {
-					errorHandler(w, err.Error(), http.StatusBadGateway)
-					return
-				}
-				defer func() {
-					if err := os.RemoveAll(cg.CookbookPath); err != nil {
-						WARNING.Printf("Failed to cleanup temp cookbook folder %s: %s", cg.CookbookPath, err)
+					if strings.Contains(r.Header.Get("User-Agent"), "Ridley") {
+						errCode = http.StatusConflict
 					}
-				}()
-				if errCode, err := cg.validateCookbookStatus(); err != nil {
 					errorHandler(w, err.Error(), errCode)
 					return
 				}
-				if errCode, err := cg.tagAndPublishCookbook(); err != nil {
-					errorHandler(w, err.Error(), errCode)
-					return
+				if cg.Cookbook.Frozen {
+					cg.CookbookPath = path.Join(cfg.Default.Tempdir, fmt.Sprintf("%s-%s", r.Header.Get("X-Ops-Userid"), cg.Cookbook.Name))
+					if err := cg.processCookbookFiles(); err != nil {
+						errorHandler(w, err.Error(), http.StatusBadGateway)
+						return
+					}
+					defer func() {
+						if err := os.RemoveAll(cg.CookbookPath); err != nil {
+							WARNING.Printf("Failed to cleanup temp cookbook folder %s: %s", cg.CookbookPath, err)
+						}
+					}()
+					if errCode, err := cg.validateCookbookStatus(); err != nil {
+						errorHandler(w, err.Error(), errCode)
+						return
+					}
+					if errCode, err := cg.tagAndPublishCookbook(); err != nil {
+						errorHandler(w, err.Error(), errCode)
+						return
+					}
 				}
 			}
 		}
