@@ -9,6 +9,8 @@ Chef-Guard CHANGELOG
 - Tar files uploaded to the supermarket will no longer contain files that are in the .gitignore or chefignore (fixes GH-56)
 - Added checks to verify content has actually changed before commiting anything to Git (fixes GH-64)
 - Filtered out the node and client creations so those will be commited if `commitchanges = true` (fixes GH-67 and GH-70)
+- Fixed a bug were a change was committed even when the change failed (fixes GH-68)
+- Fixed the custome client endpoint so it redirects to the correct path (fixes GH-71)
 
 0.5.0
 -----
