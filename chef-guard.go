@@ -168,9 +168,12 @@ func startSignalHandler() {
 }
 
 func errorHandler(w http.ResponseWriter, err string, statusCode int) {
-	if statusCode == http.StatusPreconditionFailed {
+	switch statusCode {
+	case http.StatusNotFound:
+		// No need to write anything to the log for this one...
+	case http.StatusPreconditionFailed:
 		WARNING.Println(err)
-	} else {
+	default:
 		ERROR.Println(err)
 	}
 	http.Error(w, err, statusCode)

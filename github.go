@@ -95,14 +95,15 @@ func (cg *ChefGuard) syncedGitUpdate(action string, body []byte) {
 		ERROR.Printf("Failed to convert %s config for %s %s for %s: %s", itemType, itemType, strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), cg.User, err)
 		return
 	}
-	if resp, err := cg.writeConfigToGit(action, config); err != nil {
+	resp, err := cg.writeConfigToGit(action, config)
+	if err != nil {
 		itemType := strings.TrimSuffix(cg.ChangeDetails.Type, "s")
 		ERROR.Printf("Failed to update %s %s for %s in Github: %s", strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), itemType, cg.User, err)
 		return
-	} else {
+	}
+	if resp != nil {
 		if err := cg.mailChanges(fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item), *resp.Commit.SHA, action); err != nil {
 			ERROR.Printf("Failed to send git spam: %s", err)
-			return
 		}
 	}
 	return
@@ -150,6 +151,13 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (*github.Rep
 					return nil, err
 				}
 			} else {
+				conf, err := file.Decode()
+				if err != nil {
+					return nil, err
+				}
+				if string(conf) == string(config) {
+					return nil, nil
+				}
 				msg := fmt.Sprintf("Config for %s %s updated by Chef-Guard", strings.TrimSuffix(cg.ChangeDetails.Item, ".json"), strings.TrimSuffix(cg.ChangeDetails.Type, "s"))
 				opts.Message = &msg
 				if r, _, err = cg.gitClient.Repositories.UpdateFile(cfg.Default.GitOrganization, cg.Repo, fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item), opts); err != nil {

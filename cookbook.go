@@ -112,7 +112,33 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	}
 	c := &http.Client{Transport: t}
 
+	// Let's first find and save the .gitignore and chefignore files
+	for _, f := range cg.Cookbook.RootFiles {
+		if f.Name == ".gitignore" || f.Name == "chefignore" {
+			content, err := downloadCookbookFile(c, *cg.OrganizationID, f.Checksum)
+			if err != nil {
+				return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
+			}
+			// Save .gitignore file for later use
+			if f.Name == ".gitignore" {
+				cg.GitIgnoreFile = content
+			}
+			// Save chefignore file for later use
+			if f.Name == "chefignore" {
+				cg.ChefIgnoreFile = content
+			}
+		}
+	}
+
 	for _, f := range cg.getAllCookbookFiles() {
+		ignore, err := cg.ignoreThisFile(f.Name)
+		if err != nil {
+			return fmt.Errorf("Ignore check failed for file %s: %s", f.Name, err)
+		}
+		if ignore {
+			continue
+		}
+
 		content, err := downloadCookbookFile(c, *cg.OrganizationID, f.Checksum)
 		if err != nil {
 			return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
@@ -120,14 +146,7 @@ func (cg *ChefGuard) processCookbookFiles() error {
 		if err := writeFileToDisk(path.Join(cg.CookbookPath, f.Path), strings.NewReader(string(content))); err != nil {
 			return fmt.Errorf("Failed to write file %s to disk: %s", path.Join(cg.CookbookPath, f.Path), err)
 		}
-		// Save .gitignore file for later use
-		if f.Name == ".gitignore" {
-			cg.GitIgnoreFile = content
-		}
-		// Save chefignore file for later use
-		if f.Name == "chefignore" {
-			cg.ChefIgnoreFile = content
-		}
+
 		// Save the md5 hash to the ChefGuard struct
 		cg.FileHashes[f.Path] = md5.Sum(content)
 		// Add the file to the tar archive

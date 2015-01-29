@@ -96,17 +96,19 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
-		if err := checkHTTPResponse(resp, []int{http.StatusOK, http.StatusCreated}); err == nil {
-			cg.ChangeDetails, err = getChangeDetails(r, reqBody)
-			if err != nil {
-				errorHandler(w, fmt.Sprintf("Failed to parse variables from %s: %s", r.URL.String(), err), http.StatusBadGateway)
-				return
-			}
-			if r.Method == "PUT" {
-				go cg.syncedGitUpdate(r.Method, respBody)
-			} else {
-				go cg.syncedGitUpdate(r.Method, reqBody)
-			}
+		if err := checkHTTPResponse(resp, []int{http.StatusOK, http.StatusCreated}); err != nil {
+			errorHandler(w, err.Error(), resp.StatusCode)
+			return
+		}
+		cg.ChangeDetails, err = getChangeDetails(r, reqBody)
+		if err != nil {
+			errorHandler(w, fmt.Sprintf("Failed to parse variables from %s: %s", r.URL.String(), err), http.StatusBadGateway)
+			return
+		}
+		if r.Method == "PUT" {
+			go cg.syncedGitUpdate(r.Method, respBody)
+		} else {
+			go cg.syncedGitUpdate(r.Method, reqBody)
 		}
 		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" && r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {

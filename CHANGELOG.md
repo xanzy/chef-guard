@@ -5,6 +5,9 @@ Chef-Guard CHANGELOG
 -----
 - Fixed an issue with the new clients endpoint
 - Updated the github.com/gorilla/mux dependency
+- Fixed a bug in the processChange func where a returned error was not properly handled (fixes GH-65)
+- Tar files uploaded to the supermarket will no longer contain files that are in the .gitignore or chefignore (fixes GH-56)
+- Added checks to verify content has actually changed before commiting anything to Git (fixes GH-64)
 
 0.5.0
 -----

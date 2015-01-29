@@ -83,7 +83,8 @@ func (cg *ChefGuard) checkCookbookFrozen() (int, error) {
 
 func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 	if cg.Cookbook.Metadata.Dependencies != nil {
-		if errCode, err := cg.checkDependencies(parseCookbookVersions(cg.Cookbook.Metadata.Dependencies), false); err != nil {
+		errCode, err := cg.checkDependencies(parseCookbookVersions(cg.Cookbook.Metadata.Dependencies), false)
+		if err != nil {
 			if errCode == http.StatusPreconditionFailed {
 				err = fmt.Errorf("\n=== Dependency errors found ===\n"+
 					"%s\n"+
@@ -140,7 +141,8 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 		return http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
 	}
 	if c.CookbookVersions != nil {
-		if errCode, err := cg.checkDependencies(parseCookbookVersions(c.CookbookVersions), true); err != nil {
+		errCode, err := cg.checkDependencies(parseCookbookVersions(c.CookbookVersions), true)
+		if err != nil {
 			if errCode == http.StatusPreconditionFailed {
 				err = cg.formatConstraintsError(err)
 			}
@@ -179,7 +181,8 @@ func (cg *ChefGuard) checkDependencies(constraints map[string][]string, validate
 			}
 			if strings.HasPrefix(version, "BAD") {
 				if validateConstraints {
-					errors = append(errors, fmt.Sprintf("constraint '%s' for %s needs to be more specific (= x.x.x)", strings.TrimPrefix(version, "BAD"), name))
+					errors = append(errors, fmt.Sprintf(
+						"constraint '%s' for %s needs to be more specific (= x.x.x)", strings.TrimPrefix(version, "BAD"), name))
 				}
 				continue
 			}
@@ -238,10 +241,12 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 		}
 	}
 	if len(changed) > 0 {
-		return http.StatusPreconditionFailed, fmt.Errorf("The following file(s) are changed:\n - %s", strings.Join(changed, "\n - "))
+		return http.StatusPreconditionFailed, fmt.Errorf(
+			"The following file(s) are changed:\n - %s", strings.Join(changed, "\n - "))
 	}
 	if len(missing) > 0 {
-		return http.StatusPreconditionFailed, fmt.Errorf("Your upload contains more files than the source cookbook:\n - %s", strings.Join(missing, "\n - "))
+		return http.StatusPreconditionFailed, fmt.Errorf(
+			"Your upload contains more files than the source cookbook:\n - %s", strings.Join(missing, "\n - "))
 	}
 	if len(sh) > 0 {
 		for file, _ := range sh {
@@ -254,7 +259,8 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 			}
 		}
 		if len(missing) > 0 {
-			return http.StatusPreconditionFailed, fmt.Errorf("The source cookbook contains more files than your upload:\n - %s", strings.Join(missing, "\n - "))
+			return http.StatusPreconditionFailed, fmt.Errorf(
+				"The source cookbook contains more files than your upload:\n - %s", strings.Join(missing, "\n - "))
 		}
 	}
 	return 0, nil
@@ -275,17 +281,20 @@ func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
 	if cg.SourceCookbook != nil {
 		return 0, nil
 	}
-	return http.StatusPreconditionFailed, fmt.Errorf("Failed to locate the source of the %s cookbook!", cg.Cookbook.Name)
+	return http.StatusPreconditionFailed, fmt.Errorf(
+		"Failed to locate the source of the %s cookbook!", cg.Cookbook.Name)
 }
 
-func (cg *ChefGuard) ignoreThisFile(file string) (bool, error) {
+func (cg *ChefGuard) ignoreThisFile(file string) (ignore bool, err error) {
 	if file == "metadata.rb" || file == "metadata.json" || strings.HasPrefix(file, "spec/") {
 		return true, nil
 	}
-	if ignore, err := pathspec.GitIgnore(bytes.NewReader(cg.GitIgnoreFile), file); ignore || err != nil {
+	ignore, err = pathspec.GitIgnore(bytes.NewReader(cg.GitIgnoreFile), file)
+	if ignore || err != nil {
 		return ignore, err
 	}
-	if ignore, err := pathspec.ChefIgnore(bytes.NewReader(cg.ChefIgnoreFile), file); ignore || err != nil {
+	ignore, err = pathspec.ChefIgnore(bytes.NewReader(cg.ChefIgnoreFile), file)
+	if ignore || err != nil {
 		return ignore, err
 	}
 	return false, nil
@@ -298,11 +307,13 @@ func (cg *ChefGuard) getSourceFileHashes() (map[string][16]byte, error) {
 	}
 	resp, err := client.Get(cg.SourceCookbook.DownloadURL.String())
 	if err != nil {
-		return nil, fmt.Errorf("Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
+		return nil, fmt.Errorf(
+			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
 	}
 	defer resp.Body.Close()
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
-		return nil, fmt.Errorf("Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
+		return nil, fmt.Errorf(
+			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
 	}
 	var tr *tar.Reader
 	gr, err := gzip.NewReader(resp.Body)
@@ -363,9 +374,10 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 				return sc, 0, nil
 			}
 		}
-		return nil, http.StatusPreconditionFailed, fmt.Errorf("You are trying to upload '%s' version '%s' which is a\n"+
-			"non-existing version of a community cookbook! Make sure you are using\n"+
-			"an existing community version, or a fork with a pending pull request.", name, version)
+		return nil, http.StatusPreconditionFailed, fmt.Errorf(
+			"You are trying to upload '%s' version '%s' which is a\n"+
+				"non-existing version of a community cookbook! Make sure you are using\n"+
+				"an existing community version, or a fork with a pending pull request.", name, version)
 	}
 	return nil, 0, nil
 }
@@ -411,23 +423,28 @@ func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, er
 func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int, error) {
 	u, err := url.Parse(fmt.Sprintf("%s/%s", supermarket, "universe"))
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("Failed to parse the community cookbooks URL %s: %s", supermarket, err)
+		return nil, http.StatusBadGateway, fmt.Errorf(
+			"Failed to parse the community cookbooks URL %s: %s", supermarket, err)
 	}
 	resp, err := http.Get(u.String())
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("Failed to get cookbook list from %s: %s", u.String(), err)
+		return nil, http.StatusBadGateway, fmt.Errorf(
+			"Failed to get cookbook list from %s: %s", u.String(), err)
 	}
 	defer resp.Body.Close()
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("Failed to get cookbook list from %s: %s", u.String(), err)
+		return nil, http.StatusBadGateway, fmt.Errorf(
+			"Failed to get cookbook list from %s: %s", u.String(), err)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("Failed to read the response body from %v: %s", resp, err)
+		return nil, http.StatusBadGateway, fmt.Errorf(
+			"Failed to read the response body from %v: %s", resp, err)
 	}
 	results := make(map[string]map[string]*SourceCookbook)
 	if err := json.Unmarshal(body, &results); err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
+		return nil, http.StatusBadGateway, fmt.Errorf(
+			"Failed to unmarshal body %s: %s", string(body), err)
 	}
 	if cb, exists := results[name]; exists {
 		if sc, exists := cb[version]; exists {
@@ -447,9 +464,11 @@ func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int,
 }
 
 func communityDownloadUrl(path, name, version string) (*url.URL, error) {
-	u, err := url.Parse(fmt.Sprintf("%s/cookbooks/%s/versions/%s", path, name, strings.Replace(version, ".", "_", -1)))
+	u, err := url.Parse(fmt.Sprintf(
+		"%s/cookbooks/%s/versions/%s", path, name, strings.Replace(version, ".", "_", -1)))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse the cookbook URL %s: %s", fmt.Sprintf("%s/cookbooks/%s/versions/%s", path, name, strings.Replace(version, ".", "_", -1)), err)
+		return nil, fmt.Errorf("Failed to parse the cookbook URL %s: %s", fmt.Sprintf("%s/cookbooks/%s/versions/%s",
+			path, name, strings.Replace(version, ".", "_", -1)), err)
 	}
 	resp, err := http.Get(u.String())
 	if err != nil {
