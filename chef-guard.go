@@ -127,7 +127,7 @@ func main() {
 	rtr.Path("/chef-guard/time").HandlerFunc(timeHandler).Methods("GET")
 	if cfg.ChefClients.Path != "" {
 		rtr.Path("/chef-guard/{type:metadata|download}").HandlerFunc(processDownload).Methods("GET")
-		rtr.PathPrefix("/chef-guard/clients").Handler(http.StripPrefix("/chef-guard/clients/", http.FileServer(http.Dir(cfg.ChefClients.Path))))
+		rtr.PathPrefix("/chef-guard/clients").Handler(http.StripPrefix("/chef-guard/clients", http.FileServer(http.Dir(cfg.ChefClients.Path))))
 	}
 
 	rtr.NotFoundHandler = p
@@ -168,9 +168,12 @@ func startSignalHandler() {
 }
 
 func errorHandler(w http.ResponseWriter, err string, statusCode int) {
-	if statusCode == http.StatusPreconditionFailed {
+	switch statusCode {
+	case http.StatusNotFound:
+		// No need to write anything to the log for this one...
+	case http.StatusPreconditionFailed:
 		WARNING.Println(err)
-	} else {
+	default:
 		ERROR.Println(err)
 	}
 	http.Error(w, err, statusCode)

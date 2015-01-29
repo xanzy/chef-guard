@@ -30,7 +30,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/mux",
-			"Rev": "14cafe28513321476c73967a5a4f3454b6129c46"
+			"Rev": "e444e69cbd2e2e3e0749a2f3c717cec491552bbf"
 		},
 		{
 			"ImportPath": "github.com/marpaia/chef-golang",
