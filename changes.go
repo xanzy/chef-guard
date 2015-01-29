@@ -51,21 +51,27 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 	return func(w http.ResponseWriter, r *http.Request) {
 		cg, err := newChefGuard(r)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to create a new ChefGuard structure: %s", err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf(
+				"Failed to create a new ChefGuard structure: %s", err), http.StatusBadGateway)
 			return
 		}
 		reqBody, err := dumpBody(r)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf(
+				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
-		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "enforced" && r.Method != "DELETE" {
+		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "enforced" &&
+			r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {
 				errorHandler(w, err.Error(), errCode)
 				return
 			}
 		}
-		if getEffectiveConfig("SaveChefMetrics", cg.Organization).(bool) == true && mux.Vars(r)["type"] == "nodes" && strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") && r.Method == "PUT" {
+		if getEffectiveConfig("SaveChefMetrics", cg.Organization).(bool) == true &&
+			strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") &&
+			mux.Vars(r)["type"] == "nodes" &&
+			r.Method == "PUT" {
 			/* WORK IN PROGRESS
 			var d chef.Node
 			if err := bson.Unmarshal([]byte(reqBody), &d); err != nil {
@@ -76,24 +82,40 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			chefmetrics.Insert(d)
 			*/
 		}
-		if getEffectiveConfig("CommitChanges", cg.Organization).(bool) == false || (strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") && r.Header.Get("X-Ops-Request-Source") != "web") {
+		// So, this is kind of an ugly one...
+		// 1. If we don't want to commit any changes, just return here.
+		// 2. If we do want to commit the changes, but we are a node updating itself also return
+		// here unless this is a client or node creation as we do want to see those ones.
+		if getEffectiveConfig("CommitChanges", cg.Organization).(bool) == false ||
+			strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") &&
+				r.Header.Get("X-Ops-Request-Source") != "web" &&
+				!((mux.Vars(r)["type"] == "clients" || mux.Vars(r)["type"] == "nodes") && r.Method == "POST") {
 			p.ServeHTTP(w, r)
 			return
 		}
-		r.URL, err = url.Parse(fmt.Sprintf("http://%s:%d%s?%s", cfg.Chef.ErchefIP, cfg.Chef.ErchefPort, r.URL.Path, r.URL.RawQuery))
+		r.URL, err = url.Parse(fmt.Sprintf(
+			"http://%s:%d%s?%s", cfg.Chef.ErchefIP, cfg.Chef.ErchefPort, r.URL.Path, r.URL.RawQuery))
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to parse URL %s: %s", fmt.Sprintf("http://%s:%d%s?%s", cfg.Chef.ErchefIP, cfg.Chef.ErchefPort, r.URL.Path, r.URL.RawQuery), err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf(
+				"Failed to parse URL %s: %s", fmt.Sprintf(
+					"http://%s:%d%s?%s",
+					cfg.Chef.ErchefIP,
+					cfg.Chef.ErchefPort,
+					r.URL.Path,
+					r.URL.RawQuery), err), http.StatusBadGateway)
 			return
 		}
 		resp, err := http.DefaultTransport.RoundTrip(r)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Call to %s failed: %s", r.URL.String(), err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf(
+				"Call to %s failed: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
 		defer resp.Body.Close()
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf(
+				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
 		if err := checkHTTPResponse(resp, []int{http.StatusOK, http.StatusCreated}); err != nil {
@@ -102,7 +124,8 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 		}
 		cg.ChangeDetails, err = getChangeDetails(r, reqBody)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to parse variables from %s: %s", r.URL.String(), err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf(
+				"Failed to parse variables from %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
 		if r.Method == "PUT" {
@@ -110,7 +133,8 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 		} else {
 			go cg.syncedGitUpdate(r.Method, reqBody)
 		}
-		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" && r.Method != "DELETE" {
+		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" &&
+			r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {
 				errorHandler(w, err.Error(), errCode)
 				return
