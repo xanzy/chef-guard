@@ -307,21 +307,25 @@ func (cg *ChefGuard) getSourceFileHashes() (map[string][16]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create a new download client: %s", err)
 	}
+
 	resp, err := client.Get(cg.SourceCookbook.DownloadURL.String())
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
 	}
 	defer resp.Body.Close()
+
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
 		return nil, fmt.Errorf(
 			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
 	}
+
 	var tr *tar.Reader
 	gr, err := gzip.NewReader(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create a new gzipReader: %s", err)
 	}
+
 	tr = tar.NewReader(gr)
 	files := make(map[string][16]byte)
 	for {
@@ -335,23 +339,32 @@ func (cg *ChefGuard) getSourceFileHashes() (map[string][16]byte, error) {
 		if header == nil {
 			break
 		}
+
 		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
 			content, err := ioutil.ReadAll(tr)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to process all files: %s", err)
 			}
+
 			file := strings.SplitN(header.Name, "/", 2)[1]
+
 			// The source version should be leading, so save .gitignore file if we find one
 			if file == ".gitignore" {
 				cg.GitIgnoreFile = content
 			}
+
 			// The source version should be leading, so save chefignore file if we find one
 			if file == "chefignore" {
 				cg.ChefIgnoreFile = content
 			}
+
+			// Make sure we only have unix style line endings
+			content = []byte(strings.Replace(string(content), "\r\n", "\n", -1))
+
 			files[file] = md5.Sum(content)
 		}
 	}
+
 	return files, nil
 }
 

@@ -10,7 +10,8 @@ Chef-Guard CHANGELOG
 - Added checks to verify content has actually changed before commiting anything to Git (fixes GH-64)
 - Filtered out the node and client creations so those will be commited if `commitchanges = true` (fixes GH-67 and GH-70)
 - Fixed a bug were a change was committed even when the change failed (fixes GH-68)
-- Fixed the custome client endpoint so it redirects to the correct path (fixes GH-71)
+- Fixed the custom client endpoint so it redirects to the correct path (fixes GH-71)
+- Altered the diffing mechanism so it doesn't trigger on the line endings (windows vs unix style endings) (fixes GH-72)
 
 0.5.0
 -----

@@ -248,6 +248,7 @@ Content-Type: text/html; charset="UTF-8"
 --></style>
 </head>
 <body>`, user, getEffectiveConfig("MailRecipient", org).(string), subject)
+
 	end := fmt.Sprint(`</body>
 </html>`)
 
@@ -268,16 +269,20 @@ Content-Type: text/html; charset="UTF-8"
 }
 
 func mailDiff(org, from, msg string) error {
-	c, err := smtp.Dial(fmt.Sprintf("%s:%d", getEffectiveConfig("MailServer", org).(string), getEffectiveConfig("MailPort", org).(int)))
+	host := getEffectiveConfig("MailServer", org).(string)
+	port := getEffectiveConfig("MailPort", org).(int)
+
+	c, err := smtp.Dial(fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return err
 	}
 	defer c.Close()
-	if err = c.Hello(getEffectiveConfig("MailDomain", org).(string)); err != nil {
+	if err = c.Hello(cfg.Chef.Server); err != nil {
 		return err
 	}
 	if ok, _ := c.Extension("STARTTLS"); ok {
-		if err = c.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+		config := &tls.Config{InsecureSkipVerify: true}
+		if err = c.StartTLS(config); err != nil {
 			return err
 		}
 	}
