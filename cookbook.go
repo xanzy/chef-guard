@@ -148,12 +148,17 @@ func (cg *ChefGuard) processCookbookFiles() error {
 		if err != nil {
 			return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 		}
+
+		// Make sure we only have unix style line endings
+		content = []byte(strings.Replace(string(content), "\r\n", "\n", -1))
+
 		if err := writeFileToDisk(path.Join(cg.CookbookPath, f.Path), strings.NewReader(string(content))); err != nil {
 			return fmt.Errorf("Failed to write file %s to disk: %s", path.Join(cg.CookbookPath, f.Path), err)
 		}
 
 		// Save the md5 hash to the ChefGuard struct
 		cg.FileHashes[f.Path] = md5.Sum(content)
+
 		// Add the file to the tar archive
 		header := &tar.Header{
 			Name:    fmt.Sprintf("%s/%s", cg.Cookbook.Name, f.Path),
@@ -161,22 +166,28 @@ func (cg *ChefGuard) processCookbookFiles() error {
 			Mode:    0644,
 			ModTime: time.Now(),
 		}
+
 		if err := tw.WriteHeader(header); err != nil {
 			return fmt.Errorf("Failed to create header for file %s: %s", f.Name, err)
 		}
+
 		if _, err := tw.Write(content); err != nil {
 			return fmt.Errorf("Failed to write file %s to archive: %s", f.Name, err)
 		}
 	}
+
 	if err := addMetadataJSON(tw, cg.Cookbook); err != nil {
 		return fmt.Errorf("Failed to create metadata.json: %s", err)
 	}
+
 	if err := tw.Close(); err != nil {
 		return fmt.Errorf("Failed to close the tar archive: %s", err)
 	}
+
 	if err := gw.Close(); err != nil {
 		return fmt.Errorf("Failed to close the gzip archive: %s", err)
 	}
+
 	cg.TarFile = buf.Bytes()
 	return nil
 }
