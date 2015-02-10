@@ -50,7 +50,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/goauth2/oauth"
+	"code.google.com/p/goauth2/oauth"
 )
 
 // These are the default/standard values for this to work for Google service accounts.

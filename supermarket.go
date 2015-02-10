@@ -24,11 +24,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
+	"github.com/marpaia/chef-golang"
 )
 
 func setupSMClient() (*chef.Chef, error) {
-	smClient, err := chef.ConnectBuilder(cfg.Supermarket.Server, cfg.Supermarket.Port, cfg.Supermarket.Version, cfg.Supermarket.User, cfg.Supermarket.Key, "")
+	smClient, err := chef.ConnectBuilder(cfg.Supermarket.Server, cfg.Supermarket.Port, "", cfg.Supermarket.User, cfg.Supermarket.Key, "")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new Supermarket API connection: %s", err)
 	}

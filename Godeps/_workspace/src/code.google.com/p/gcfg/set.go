@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/gcfg/types"
+	"code.google.com/p/gcfg/types"
 )
 
 type tag struct {

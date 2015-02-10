@@ -27,7 +27,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 )
 
 // Add files type and functions for the Sort interface

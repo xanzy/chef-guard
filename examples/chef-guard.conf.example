@@ -1,5 +1,6 @@
 [default]
-  listen          = 127.0.0.2
+  listenip        = 127.0.0.2
+  listenport      = 8000
   logfile         = /var/log/chef-guard.log
   tempdir         = /var/tmp/chef-guard
   mode            = silent        # Valid options are 'silent', 'permissive' and 'enforced'
@@ -9,10 +10,9 @@
   mailsendby      =               # Leave blank to dynamically use the mailaddress of the user making the API call (preferred)
   mailrecipient   = chef-changes@company.com
   validatechanges = silent        # Valid options are 'silent', 'permissive' and 'enforced'
-  savechefmetrics = true
   commitchanges   = false
   mailchanges     = true
-  searchgithub    = true
+  searchgit       = true
   publishcookbook = true
   blacklist       =               # This can be multiple regexes divided by a ','
   gitorganization = chef-guard
@@ -21,15 +21,15 @@
   excludefcs      =               # This can be multiple FC's divided by a ','
 
 [chef]
-  enterprisechef  = true
+  type            = enterprise    # Valid options are 'enterprise', 'opensource' and 'goiardi'
+  version         = 11
   server          = chef.company.com
   port            = 443
   sslnoverify     = false
   erchefip        = 127.0.0.1
   erchefport      = 8000
-  s3key           = xxx
-  s3secret        = xxx
-  version         = 11.12.0
+  bookshelfkey    = xxx
+  bookshelfsecret = xxx
   user            = chef-guard
   key             = /opt/chef-guard/chef-guard.pem
 
@@ -38,37 +38,27 @@
 
 [community]
   supermarket     = https://supermarket.getchef.com
-  forks           = org1
+  forks           = org1     # When using multiple orgs (divided by a ','), the order here determines the lookup order!
 
 [supermarket]
   server          = supermarket.company.com
   port            = 443
   sslnoverify     = false
-  version         = 11.12.0
   user            = chef-guard
   key             = /opt/chef-guard/chef-guard.pem
-
-[graphite]
-  server          = 127.0.0.1
-  port            = 2003
-
-[mongodb]
-  server          = 127.0.0.1
-  database        = chefmetrics
-  collection      = chefmetrics
-  user            = chef-guard
-  password        = default
 
 [tests]
   foodcritic      = /opt/chef/embedded/bin/foodcritic
   rubocop         = /opt/chef/embedded/bin/rubocop
 
-[github "chef-guard"]
+[git "chef-guard"]
+  type            = github   # Valid options are 'github' and 'gitlab'
   serverurl       =          # Empty means that it will use github.com
   sslnoverify     = false
   token           = xxx
 
-[github "demo2"]
+[git "demo2"]
+  type            = github   # Valid options are 'github' and 'gitlab'
   serverurl       = https://github.company.com
   sslnoverify     = false
   token           = xxx
@@ -80,4 +70,4 @@
 
 [customer "demo2"]
   mode            = enforced
-  gitcookbookorgs = demo2    # If a customer org is used in conjunction with default org(s), the default orgs are searched first!
+  gitcookbookorgs = demo2    # If customer org(s) are used in conjunction with default org(s), the default orgs are searched first!

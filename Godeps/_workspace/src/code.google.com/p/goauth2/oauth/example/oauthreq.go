@@ -13,7 +13,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/goauth2/oauth"
+	"code.google.com/p/goauth2/oauth"
 )
 
 var (

@@ -15,19 +15,20 @@ import (
 
 // RepositoryRelease represents a GitHub release in a repository.
 type RepositoryRelease struct {
-	ID              *int       `json:"id,omitempty"`
-	TagName         *string    `json:"tag_name,omitempty"`
-	TargetCommitish *string    `json:"target_commitish,omitempty"`
-	Name            *string    `json:"name,omitempty"`
-	Body            *string    `json:"body,omitempty"`
-	Draft           *bool      `json:"draft,omitempty"`
-	Prerelease      *bool      `json:"prerelease,omitempty"`
-	CreatedAt       *Timestamp `json:"created_at,omitempty"`
-	PublishedAt     *Timestamp `json:"published_at,omitempty"`
-	URL             *string    `json:"url,omitempty"`
-	HTMLURL         *string    `json:"html_url,omitempty"`
-	AssetsURL       *string    `json:"assets_url,omitempty"`
-	UploadURL       *string    `json:"upload_url,omitempty"`
+	ID              *int           `json:"id,omitempty"`
+	TagName         *string        `json:"tag_name,omitempty"`
+	TargetCommitish *string        `json:"target_commitish,omitempty"`
+	Name            *string        `json:"name,omitempty"`
+	Body            *string        `json:"body,omitempty"`
+	Draft           *bool          `json:"draft,omitempty"`
+	Prerelease      *bool          `json:"prerelease,omitempty"`
+	CreatedAt       *Timestamp     `json:"created_at,omitempty"`
+	PublishedAt     *Timestamp     `json:"published_at,omitempty"`
+	URL             *string        `json:"url,omitempty"`
+	HTMLURL         *string        `json:"html_url,omitempty"`
+	AssetsURL       *string        `json:"assets_url,omitempty"`
+	Assets          []ReleaseAsset `json:"assets,omitempty"`
+	UploadURL       *string        `json:"upload_url,omitempty"`
 }
 
 func (r RepositoryRelease) String() string {
@@ -36,16 +37,18 @@ func (r RepositoryRelease) String() string {
 
 // ReleaseAsset represents a Github release asset in a repository.
 type ReleaseAsset struct {
-	ID            *int       `json:"id,omitempty"`
-	URL           *string    `json:"url,omitempty"`
-	Name          *string    `json:"name,omitempty"`
-	Label         *string    `json:"label,omitempty"`
-	State         *string    `json:"state,omitempty"`
-	ContentType   *string    `json:"content_type,omitempty"`
-	Size          *int       `json:"size,omitempty"`
-	DownloadCount *int       `json:"download_count,omitempty"`
-	CreatedAt     *Timestamp `json:"created_at,omitempty"`
-	UpdatedAt     *Timestamp `json:"updated_at,omitempty"`
+	ID                 *int       `json:"id,omitempty"`
+	URL                *string    `json:"url,omitempty"`
+	Name               *string    `json:"name,omitempty"`
+	Label              *string    `json:"label,omitempty"`
+	State              *string    `json:"state,omitempty"`
+	ContentType        *string    `json:"content_type,omitempty"`
+	Size               *int       `json:"size,omitempty"`
+	DownloadCount      *int       `json:"download_count,omitempty"`
+	CreatedAt          *Timestamp `json:"created_at,omitempty"`
+	UpdatedAt          *Timestamp `json:"updated_at,omitempty"`
+	BrowserDownloadUrl *string    `json:"browser_download_url,omitempty"`
+	Uploader           *User      `json:"uploader,omitempty"`
 }
 
 func (r ReleaseAsset) String() string {

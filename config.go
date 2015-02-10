@@ -24,13 +24,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/bitbucket.org/kardianos/osext"
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/gcfg"
+	"code.google.com/p/gcfg"
+	"github.com/mitchellh/osext"
+	"github.com/xanzy/chef-guard/git"
 )
 
 type Config struct {
 	Default struct {
-		Listen          string
+		ListenIP        string
+		ListenPort      int
 		Logfile         string
 		Tempdir         string
 		Mode            string
@@ -40,10 +42,9 @@ type Config struct {
 		MailSendBy      string
 		MailRecipient   string
 		ValidateChanges string
-		SaveChefMetrics bool
 		CommitChanges   bool
 		MailChanges     bool
-		SearchGithub    bool
+		SearchGit       bool
 		PublishCookbook bool
 		Blacklist       string
 		GitOrganization string
@@ -59,27 +60,26 @@ type Config struct {
 		MailSendBy      *string
 		MailRecipient   *string
 		ValidateChanges *string
-		SaveChefMetrics *bool
 		CommitChanges   *bool
 		MailChanges     *bool
-		SearchGithub    *bool
+		SearchGit       *bool
 		PublishCookbook *bool
 		Blacklist       *string
 		GitCookbookOrgs *string
 		ExcludeFCs      *string
 	}
 	Chef struct {
-		EnterpriseChef bool
-		Server         string
-		Port           string
-		SSLNoVerify    bool
-		ErchefIP       string
-		ErchefPort     int
-		S3Key          string
-		S3Secret       string
-		Version        string
-		User           string
-		Key            string
+		Type            string
+		Version         int
+		Server          string
+		Port            string
+		SSLNoVerify     bool
+		ErchefIP        string
+		ErchefPort      int
+		BookshelfKey    string
+		BookshelfSecret string
+		User            string
+		Key             string
 	}
 	ChefClients struct {
 		Path string
@@ -92,30 +92,14 @@ type Config struct {
 		Server      string
 		Port        string
 		SSLNoVerify bool
-		Version     string
 		User        string
 		Key         string
-	}
-	Graphite struct {
-		Server string
-		Port   int
-	}
-	MongoDB struct {
-		Server     string
-		Database   string
-		Collection string
-		User       string
-		Password   string
 	}
 	Tests struct {
 		Foodcritic string
 		Rubocop    string
 	}
-	Github map[string]*struct {
-		ServerURL   string
-		SSLNoVerify bool
-		Token       string
-	}
+	Git map[string]*git.Config
 }
 
 var cfg Config
@@ -125,15 +109,20 @@ func loadConfig() error {
 	if err != nil {
 		return fmt.Errorf("Failed to get path of %s: %s", path.Base(os.Args[0]), err)
 	}
+
 	strings.TrimSuffix(exe, path.Ext(exe))
 	var tmpConfig Config
 	if err := gcfg.ReadFileInto(&tmpConfig, exe+".conf"); err != nil {
 		return fmt.Errorf("Failed to parse config file '%s': %s", exe+".conf", err)
 	}
+
 	if err := verifyRequiredFields(&tmpConfig); err != nil {
 		return err
 	}
-	if err := verifyGithubTokens(&tmpConfig); err != nil {
+	if err := verifyChefConfig(&tmpConfig); err != nil {
+		return err
+	}
+	if err := verifyGitConfigs(&tmpConfig); err != nil {
 		return err
 	}
 	if err := verifyBlackLists(&tmpConfig); err != nil {
@@ -142,24 +131,28 @@ func loadConfig() error {
 	if err := parsePaths(&tmpConfig, path.Dir(exe)); err != nil {
 		return err
 	}
+
 	cfg = tmpConfig
+
 	return nil
 }
 
 func verifyRequiredFields(c *Config) error {
 	r := map[string]interface{}{
-		"Default->Listen":          c.Default.Listen,
+		"Default->ListenIP":        c.Default.ListenIP,
+		"Default->ListenPort":      c.Default.ListenPort,
 		"Default->Logfile":         c.Default.Logfile,
 		"Default->Tempdir":         c.Default.Tempdir,
 		"Default->Mode":            c.Default.Mode,
 		"Default->ValidateChanges": c.Default.ValidateChanges,
+		"Chef->Type":               c.Chef.Type,
+		"Chef->Version":            c.Chef.Version,
 		"Chef->Server":             c.Chef.Server,
 		"Chef->Port":               c.Chef.Port,
 		"Chef->ErchefIP":           c.Chef.ErchefIP,
 		"Chef->ErchefPort":         c.Chef.ErchefPort,
-		"Chef->S3Key":              c.Chef.S3Key,
-		"Chef->S3Secret":           c.Chef.S3Secret,
-		"Chef->Version":            c.Chef.Version,
+		"Chef->BookshelfKey":       c.Chef.BookshelfKey,
+		"Chef->BookshelfSecret":    c.Chef.BookshelfSecret,
 		"Chef->User":               c.Chef.User,
 		"Chef->Key":                c.Chef.Key,
 		"Community->Supermarket":   c.Community.Supermarket,
@@ -175,22 +168,13 @@ func verifyRequiredFields(c *Config) error {
 		r["Default->GitOrganization"] = c.Default.GitOrganization
 	}
 
-	if c.Default.SearchGithub {
+	if c.Default.SearchGit {
 		r["Default->GitCookbookOrgs"] = c.Default.GitCookbookOrgs
-	}
-
-	if c.Default.SaveChefMetrics {
-		r["MongoDB->Server"] = c.MongoDB.Server
-		r["MongoDB->Database"] = c.MongoDB.Database
-		r["MongoDB->Collection"] = c.MongoDB.Collection
-		r["MongoDB->User"] = c.MongoDB.User
-		r["MongoDB->Password"] = c.MongoDB.Password
 	}
 
 	if c.Default.PublishCookbook {
 		r["Supermarket->Server"] = c.Supermarket.Server
 		r["Supermarket->Port"] = c.Supermarket.Port
-		r["Supermarket->Version"] = c.Supermarket.Version
 		r["Supermarket->User"] = c.Supermarket.User
 		r["Supermarket->Key"] = c.Supermarket.Key
 	}
@@ -211,10 +195,22 @@ func verifyRequiredFields(c *Config) error {
 	return nil
 }
 
-func verifyGithubTokens(c *Config) error {
-	for k, v := range c.Github {
+func verifyChefConfig(c *Config) error {
+	switch c.Chef.Type {
+	case "enterprise", "opensource", "goiardi":
+		return nil
+	default:
+		return fmt.Errorf("Invalid Chef type %q! Valid types are 'enterprise', 'opensource' and 'goiardi'.", c.Chef.Type)
+	}
+}
+
+func verifyGitConfigs(c *Config) error {
+	for k, v := range c.Git {
+		if v.Type != "github" && v.Type != "gitlab" {
+			return fmt.Errorf("Invalid Git type %q! Valid types are 'github' and 'gitlab'.", v.Type)
+		}
 		if v.Token == "" {
-			return fmt.Errorf("No token found for Github organization %s! All configured organizations need to have a valid token.", k)
+			return fmt.Errorf("No token found for %s organization %s! All configured organizations need to have a valid token.", v.Type, k)
 		}
 	}
 	return nil
@@ -254,7 +250,7 @@ func parsePaths(c *Config, ep string) error {
 }
 
 func getEffectiveConfig(key, org string) interface{} {
-	if cfg.Chef.EnterpriseChef {
+	if cfg.Chef.Type == "enterprise" {
 		if c, found := cfg.Customer[org]; found {
 			conf := reflect.ValueOf(c).Elem()
 			v := conf.FieldByName(key)

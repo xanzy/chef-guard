@@ -38,8 +38,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
+	"github.com/gorilla/mux"
+	"github.com/marpaia/chef-golang"
 )
 
 func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
@@ -97,7 +97,6 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 			details := cg.getCookbookChangeDetails(r)
 			go cg.syncedGitUpdate(r.Method, details)
 		}
-		go metric.SimpleSend("chef-guard.success", "1")
 		p.ServeHTTP(w, r)
 	}
 }
@@ -192,19 +191,26 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	return nil
 }
 
+// Sandbox represents a Chef sandbox used for uploading cookbook files
 type Sandbox struct {
-	SandboxId string                 `json:"sandbox_id"`
-	Uri       string                 `json:"uri"`
+	SandboxID string                 `json:"sandbox_id"`
+	URI       string                 `json:"uri"`
 	Checksums map[string]SandboxItem `json:"checksums"`
 }
 
+// SandboxItem represenst a single sandbox item (e.g. a cookbook file)
 type SandboxItem struct {
-	Url         string `json:"url"`
+	URL         string `json:"url"`
 	NeedsUpload bool   `json:"needs_upload"`
 }
 
 func (cg *ChefGuard) getOrganizationID() error {
-	resp, err := cg.chefClient.Post("sandboxes", "application/json", nil, strings.NewReader(`{"checksums":{"00000000000000000000000000000000":null}}`))
+	resp, err := cg.chefClient.Post(
+		"sandboxes",
+		"application/json",
+		nil,
+		strings.NewReader(`{"checksums":{"00000000000000000000000000000000":null}}`),
+	)
 	if err != nil {
 		return err
 	}
@@ -221,7 +227,7 @@ func (cg *ChefGuard) getOrganizationID() error {
 		return err
 	}
 	re := regexp.MustCompile(`^.*/organization-(.*)\/checksum-.*$`)
-	u := sb.Checksums["00000000000000000000000000000000"].Url
+	u := sb.Checksums["00000000000000000000000000000000"].URL
 	if res := re.FindStringSubmatch(u); res != nil {
 		cg.OrganizationID = &res[1]
 		return nil
@@ -245,9 +251,12 @@ func (cg *ChefGuard) getAllCookbookFiles() []struct{ chef.CookbookItem } {
 
 func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 	if !cg.SourceCookbook.artifact {
+		tag := fmt.Sprintf("v%s", cg.Cookbook.Version)
+
 		if !cg.SourceCookbook.tagged {
 			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
-			if err := tagCookbookRepo(cg.SourceCookbook.githubOrg, cg.Cookbook.Name, cg.Cookbook.Version, cg.User, mail); err != nil {
+			err := tagCookbook(cg.SourceCookbook.gitOrg, cg.Cookbook.Name, tag, cg.User, mail)
+			if err != nil {
 				return http.StatusBadGateway, err
 			}
 		}
@@ -255,7 +264,8 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 			if err := cg.publishCookbook(); err != nil {
 				errText := err.Error()
 				if !cg.SourceCookbook.tagged {
-					if err := untagCookbookRepo(cg.SourceCookbook.githubOrg, cg.Cookbook.Name, cg.Cookbook.Version); err != nil {
+					err := untagCookbook(cg.SourceCookbook.gitOrg, cg.Cookbook.Name, tag)
+					if err != nil {
 						errText = fmt.Sprintf("%s - NOTE: Failed to untag the repo during cleanup!", errText)
 					}
 				}
@@ -268,25 +278,48 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 
 func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 	v := mux.Vars(r)
-	cg.ChangeDetails = &changeDetails{Item: fmt.Sprintf("%s-%s.json", v["name"], v["version"]), Type: v["type"]}
+
+	cg.ChangeDetails = &changeDetails{
+		Item: fmt.Sprintf("%s-%s.json", v["name"], v["version"]),
+		Type: v["type"],
+	}
+
 	frozen := false
 	if cg.Cookbook != nil {
 		frozen = cg.Cookbook.Frozen
 	}
+
 	source := "N/A"
 	if cg.SourceCookbook != nil {
 		source = cg.SourceCookbook.DownloadURL.String()
 	}
-	details := fmt.Sprintf("{\"name\":\"%s\",\"version\":\"%s\",\"frozen\":%t,\"forcedupload\":%t,\"source\":\"%s\"}", v["name"], v["version"], frozen, cg.ForcedUpload, source)
+
+	details := fmt.Sprintf(
+		"{\"name\":\"%s\",\"version\":\"%s\",\"frozen\":%t,\"forcedupload\":%t,\"source\":\"%s\"}",
+		v["name"],
+		v["version"],
+		frozen,
+		cg.ForcedUpload,
+		source,
+	)
+
 	return []byte(details)
 }
 
 func downloadCookbookFile(c *http.Client, orgID, checksum string) ([]byte, error) {
-	u, err := generateSignedURL(orgID, checksum)
-	if err != nil {
-		return nil, err
+	var urlStr string
+
+	if cfg.Chef.Type == "goiardi" {
+		urlStr = fmt.Sprintf("%s/file_store/%s", getChefBaseURL(), checksum)
+	} else {
+		u, err := generateSignedURL(orgID, checksum)
+		if err != nil {
+			return nil, err
+		}
+		urlStr = u.String()
 	}
-	resp, err := c.Get(u.String())
+
+	resp, err := c.Get(urlStr)
 	if err != nil {
 		return nil, err
 	}
@@ -303,11 +336,21 @@ func generateSignedURL(orgID, checksum string) (*url.URL, error) {
 	expires := time.Now().Unix() + 10
 	stringToSign := fmt.Sprintf("GET\n\n\n%d\n/bookshelf/organization-%s/checksum-%s", expires, orgID, checksum)
 
-	h := hmac.New(sha1.New, []byte(cfg.Chef.S3Secret))
+	h := hmac.New(sha1.New, []byte(cfg.Chef.BookshelfSecret))
 	h.Write([]byte(stringToSign))
 	signature := url.QueryEscape(base64.StdEncoding.EncodeToString(h.Sum(nil)))
 
-	return url.Parse(fmt.Sprintf("%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s", getChefBaseURL(), orgID, checksum, cfg.Chef.S3Key, expires, signature))
+	urlStr := fmt.Sprintf(
+		"%s/bookshelf/organization-%s/checksum-%s?AWSAccessKeyId=%s&Expires=%d&Signature=%s",
+		getChefBaseURL(),
+		orgID,
+		checksum,
+		cfg.Chef.BookshelfKey,
+		expires,
+		signature,
+	)
+
+	return url.Parse(urlStr)
 }
 
 func writeFileToDisk(filePath string, content io.Reader) error {
@@ -336,7 +379,7 @@ func addMetadataJSON(tw *tar.Writer, cb *chef.CookbookVersion) error {
 	if err != nil {
 		return err
 	}
-	md = DecodeMarshalledJSON(md)
+	md = decodeMarshalledJSON(md)
 	header := &tar.Header{
 		Name:    fmt.Sprintf("%s/%s", cb.Name, "metadata.json"),
 		Size:    int64(len(md)),

@@ -5,7 +5,7 @@ Just as a heads up, building the project is actually as easy as running `go buil
 
 ## Vendoring
 
-All dependencies are vendored in using '[godep save -r](https://github.com/tools/godep)' so all imports are rewritten to their current, vendored location. I'm currently working on a tweak for goimports so it also supports using with vendored projects. More to come on that later on.
+All dependencies are vendored in using '[godep](https://github.com/tools/godep)'.
 
 ## Building Chef-Guard
 

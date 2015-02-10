@@ -44,10 +44,8 @@ func (cg *ChefGuard) executeChecks() (int, error) {
 func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 	WARNING.Printf("%s errors when uploading cookbook '%s' for '%s'\n", strings.Title(check), cg.Cookbook.Name, cg.User)
 	if getEffectiveConfig("Mode", cg.Organization).(string) == "permissive" && cg.ForcedUpload {
-		go metric.SimpleSend(fmt.Sprintf("chef-guard.failed.%s.forced_bypass", check), "1")
 		return true
 	}
-	go metric.SimpleSend(fmt.Sprintf("chef-guard.failed.%s.no_bypass", check), "1")
 	return false
 }
 
@@ -90,9 +88,8 @@ func runRubocop(cookbookPath string) (int, error) {
 		if strings.Contains(string(output), "offenses detected") {
 			errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
 			return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", errText)
-		} else {
-			return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
 		}
+		return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
 	}
 	return 0, nil
 }

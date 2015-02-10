@@ -9,8 +9,8 @@ import (
 )
 
 import (
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/gcfg/scanner"
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/code.google.com/p/gcfg/token"
+	"code.google.com/p/gcfg/scanner"
+	"code.google.com/p/gcfg/token"
 )
 
 func ExampleScanner_Scan() {

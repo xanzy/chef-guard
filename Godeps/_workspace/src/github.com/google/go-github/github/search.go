@@ -8,7 +8,7 @@ package github
 import (
 	"fmt"
 
-	qs "github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/google/go-querystring/query"
+	qs "github.com/google/go-querystring/query"
 )
 
 // SearchService provides access to the search related functions

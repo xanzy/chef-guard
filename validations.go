@@ -31,7 +31,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/xanzy/go-pathspec"
+	"github.com/xanzy/go-pathspec"
 )
 
 type ErrorInfo struct {
@@ -44,7 +44,7 @@ type SourceCookbook struct {
 	artifact     bool
 	private      bool
 	tagged       bool
-	githubOrg    string
+	gitOrg       string
 	File         string   `json:"file,omitempty"`
 	DownloadURL  *url.URL `json:"url"`
 	LocationType string   `json:"location_type"`
@@ -116,11 +116,11 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
 					"%s\n\nSource: %s\n\n"+
 					"Make sure you are using an unchanged community version\n"+
-					"or, if you really need to change something, make a fork to\n"+
-					"https://github.com and create a pull request back to the\n"+
-					"community cookbook before trying to upload the cookbook again.\n"+
+					"or, if you really need to change something, make a fork and\n"+
+					"and create a pull request back to the community cookbook\n"+
+					"before trying to upload the cookbook again.\n"+
 					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
-			case "github":
+			case "git":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
 					"%s\n\nSource: %s\n\n"+
 					"Make sure all your changes are merged into the central\n"+
@@ -288,9 +288,9 @@ func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
 }
 
 func (cg *ChefGuard) ignoreThisFile(file string) (ignore bool, err error) {
-	if file == "metadata.rb" || file == "metadata.json" || strings.HasPrefix(file, "spec/") {
-		return true, nil
-	}
+	// if file == "metadata.rb" || file == "metadata.json" || strings.HasPrefix(file, "spec/") {
+	// 	return true, nil
+	// }
 	ignore, err = pathspec.GitIgnore(bytes.NewReader(cg.GitIgnoreFile), file)
 	if ignore || err != nil {
 		return ignore, err
@@ -379,7 +379,7 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 	}
 	if errCode == 1 {
 		if cfg.Community.Forks != "" {
-			sc, err = searchGithub([]string{cfg.Community.Forks}, name, version, true)
+			sc, err = searchGit(strings.Split(cfg.Community.Forks, ","), name, version, true)
 			if err != nil {
 				return nil, http.StatusBadGateway, err
 			}
@@ -417,13 +417,13 @@ func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, er
 			return sc, 0, nil
 		}
 	}
-	if getEffectiveConfig("SearchGithub", org).(bool) {
+	if getEffectiveConfig("SearchGit", org).(bool) {
 		orgList := cfg.Default.GitCookbookOrgs
 		custOrgList := getEffectiveConfig("GitCookbookOrgs", org)
 		if orgList != custOrgList {
 			orgList = fmt.Sprintf("%s,%s", orgList, custOrgList)
 		}
-		sc, err := searchGithub(strings.Split(orgList, ","), name, version, false)
+		sc, err := searchGit(strings.Split(orgList, ","), name, version, false)
 		if err != nil {
 			return nil, http.StatusBadGateway, err
 		}
@@ -508,18 +508,18 @@ func communityDownloadUrl(path, name, version string) (*url.URL, error) {
 	return u, nil
 }
 
-func searchGithub(orgs []string, name, version string, tagsOnly bool) (*SourceCookbook, error) {
+func searchGit(orgs []string, name, version string, tagsOnly bool) (*SourceCookbook, error) {
 	for _, org := range orgs {
 		org = strings.TrimSpace(org)
-		link, tagged, err := searchCookbookRepo(org, name, fmt.Sprintf("v%s", version), tagsOnly)
+		link, tagged, err := searchGitForCookbook(org, name, fmt.Sprintf("v%s", version), tagsOnly)
 		if err != nil {
 			return nil, err
 		}
 		if link != nil {
-			sc := &SourceCookbook{LocationType: "github"}
+			sc := &SourceCookbook{LocationType: "git"}
 			sc.artifact = false
 			sc.tagged = tagged
-			sc.githubOrg = org
+			sc.gitOrg = org
 			sc.DownloadURL = link
 			return sc, nil
 		}
@@ -528,14 +528,14 @@ func searchGithub(orgs []string, name, version string, tagsOnly bool) (*SourceCo
 }
 
 func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
-	if sc.LocationType != "github" {
+	if sc.LocationType != "git" {
 		return http.DefaultClient, nil
 	}
-	if _, found := cfg.Github[sc.githubOrg]; !found {
-		return nil, fmt.Errorf("No Github config specified for organization: %s!", sc.githubOrg)
+	if _, found := cfg.Git[sc.gitOrg]; !found {
+		return nil, fmt.Errorf("No Git config specified for: %s!", sc.gitOrg)
 	}
 	t := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Github[sc.githubOrg].SSLNoVerify},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Git[sc.gitOrg].SSLNoVerify},
 	}
 	return &http.Client{Transport: t}, nil
 }
