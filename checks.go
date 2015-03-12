@@ -87,7 +87,7 @@ func runRubocop(cookbookPath string) (int, error) {
 	cmd.Env = []string{"HOME=" + cfg.Default.Tempdir}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		if strings.Contains(string(output), "offenses detected") {
+		if strings.Contains(string(output), "offense") {
 			errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
 			return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", errText)
 		} else {
