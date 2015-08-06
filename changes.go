@@ -25,7 +25,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 )
 
 type Name struct {
@@ -55,12 +55,14 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 				"Failed to create a new ChefGuard structure: %s", err), http.StatusBadGateway)
 			return
 		}
+
 		reqBody, err := dumpBody(r)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
 				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
+
 		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "enforced" &&
 			r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {
@@ -68,20 +70,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 				return
 			}
 		}
-		if getEffectiveConfig("SaveChefMetrics", cg.Organization).(bool) == true &&
-			strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") &&
-			mux.Vars(r)["type"] == "nodes" &&
-			r.Method == "PUT" {
-			/* WORK IN PROGRESS
-			var d chef.Node
-			if err := bson.Unmarshal([]byte(reqBody), &d); err != nil {
-				// Needs more details!
-				errorHandler(w, err.Error(), http.StatusBadGateway)
-				return
-			}
-			chefmetrics.Insert(d)
-			*/
-		}
+
 		// So, this is kind of an ugly one...
 		// 1. If we don't want to commit any changes, just return here.
 		// 2. If we do want to commit the changes, but we are a node updating itself also return
@@ -93,6 +82,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			p.ServeHTTP(w, r)
 			return
 		}
+
 		r.URL, err = url.Parse(fmt.Sprintf(
 			"http://%s:%d%s?%s", cfg.Chef.ErchefIP, cfg.Chef.ErchefPort, r.URL.Path, r.URL.RawQuery))
 		if err != nil {
@@ -105,6 +95,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 					r.URL.RawQuery), err), http.StatusBadGateway)
 			return
 		}
+
 		resp, err := http.DefaultTransport.RoundTrip(r)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
@@ -112,27 +103,32 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			return
 		}
 		defer resp.Body.Close()
+
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
 				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
+
 		if err := checkHTTPResponse(resp, []int{http.StatusOK, http.StatusCreated}); err != nil {
 			errorHandler(w, err.Error(), resp.StatusCode)
 			return
 		}
+
 		cg.ChangeDetails, err = getChangeDetails(r, reqBody)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
 				"Failed to parse variables from %s: %s", r.URL.String(), err), http.StatusBadGateway)
 			return
 		}
+
 		if r.Method == "PUT" {
 			go cg.syncedGitUpdate(r.Method, respBody)
 		} else {
 			go cg.syncedGitUpdate(r.Method, reqBody)
 		}
+
 		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" &&
 			r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {
@@ -140,6 +136,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 				return
 			}
 		}
+
 		copyHeaders(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
 		w.Write(respBody)

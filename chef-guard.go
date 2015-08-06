@@ -17,6 +17,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -26,16 +27,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/google/go-github/github"
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/gorilla/mux"
-	"github.com/xanzy/chef-guard/Godeps/_workspace/src/github.com/marpaia/chef-golang"
+	"github.com/gorilla/mux"
+	"github.com/icub3d/graceful"
+	"github.com/marpaia/chef-golang"
+	"github.com/xanzy/chef-guard/git"
 )
+
+const VERSION = "0.6.0-UNRELEASED"
 
 // The ChefGuard struct holds all required info needed to process a request made through Chef-Guard
 type ChefGuard struct {
 	smClient       *chef.Chef
 	chefClient     *chef.Chef
-	gitClient      *github.Client
+	gitClient      git.Git
 	User           string
 	Repo           string
 	Organization   string
@@ -57,6 +61,7 @@ func newChefGuard(r *http.Request) (*ChefGuard, error) {
 		Organization: getOrgFromRequest(r),
 		ForcedUpload: dropForce(r),
 	}
+
 	// Set the repo dependend on the Organization (could become a configurable in the future)
 	if cg.Organization != "" {
 		cg.Repo = cg.Organization
@@ -67,7 +72,7 @@ func newChefGuard(r *http.Request) (*ChefGuard, error) {
 	cg.FileHashes = map[string][16]byte{}
 	// Setup chefClient
 	var err error
-	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, cfg.Chef.Version, cfg.Chef.User, cfg.Chef.Key, cg.Organization)
+	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, "", cfg.Chef.User, cfg.Chef.Key, cg.Organization)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new Chef API connection: %s", err)
 	}
@@ -76,6 +81,14 @@ func newChefGuard(r *http.Request) (*ChefGuard, error) {
 }
 
 func main() {
+	version := flag.Bool("v", false, "Show version")
+	flag.Parse()
+
+	if *version {
+		fmt.Println("Version: " + VERSION)
+		return
+	}
+
 	// Load and parse the config file
 	if err := loadConfig(); err != nil {
 		log.Fatal(err)
@@ -92,24 +105,12 @@ func main() {
 	// All critical parts are started now, so let's log a 'started' message :)
 	INFO.Println("Server started...")
 
-	// Initialize Graphite connection
-	initGraphite()
-
-	// Initialize Graphite connection
-	if enableChefMetrics() {
-		session, err := initChefMetrics()
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer session.Close()
-	}
-
 	// Setup the ErChef proxy
 	p := httputil.NewSingleHostReverseProxy(u)
 
 	// Configure all needed handlers
 	rtr := mux.NewRouter()
-	if cfg.Chef.EnterpriseChef {
+	if cfg.Chef.Type == "enterprise" || cfg.Chef.Version > 11 {
 		rtr.Path("/organizations/{org}/{type:data}/{bag}").HandlerFunc(processChange(p)).Methods("POST", "DELETE")
 		rtr.Path("/organizations/{org}/{type:data}/{bag}/{name}").HandlerFunc(processChange(p)).Methods("PUT", "DELETE")
 		rtr.Path("/organizations/{org}/{type:clients|environments|nodes|roles}").HandlerFunc(processChange(p)).Methods("POST")
@@ -135,37 +136,58 @@ func main() {
 	http.Handle("/", rtr)
 
 	// Start the server
-	startSignalHandler()
-	err = http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Default.Listen, cfg.Chef.ErchefPort), nil)
+	shutdownCh := startSignalHandler()
+	go func() {
+		<-shutdownCh
+		msg := "Gracefully closing connections..."
+		INFO.Println(msg)
+		log.Println(msg)
+		graceful.Close()
+	}()
+
+	err = graceful.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Default.ListenIP, cfg.Default.ListenPort), nil)
 	if err != nil {
-		e := fmt.Errorf("Failed to start Chef-Guard server on port %d: %s", cfg.Chef.ErchefPort, err)
-		ERROR.Println(e)
-		log.Fatal(e)
+		log.Fatalf("Chef-Guard server error: %s", err)
 	}
+
+	msg := "Server stopped..."
+	INFO.Println(msg)
+	log.Println(msg)
 }
 
-func startSignalHandler() {
+func startSignalHandler() chan struct{} {
+	resultCh := make(chan struct{})
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
+		count := 0
 		for s := range c {
 			switch s {
 			case syscall.SIGHUP:
 				if err := loadConfig(); err != nil {
-					WARNING.Printf("Could not reload configuration: %s", err)
-					log.Printf("Could not reload configuration: %s", err)
+					msg := fmt.Sprintf("Could not reload configuration: %v", err)
+					WARNING.Println(msg)
+					log.Println(msg)
 				} else {
-					INFO.Println("Successfully reloaded configuration!")
-					log.Println("Successfully reloaded configuration!")
+					msg := "Successfully reloaded configuration!"
+					INFO.Println(msg)
+					log.Println(msg)
 				}
 			default:
-				// The actual implementation to let connections dry up, still needs to be done!
-				fmt.Println("Waiting for all connections to end before stopping the server...")
-				INFO.Println("Server stopped...")
-				os.Exit(0)
+				if count > 0 {
+					msg := "Forcefully stopped Chef-Guard!"
+					INFO.Println(msg)
+					log.Println(msg)
+					os.Exit(0)
+				}
+				count++
+				resultCh <- struct{}{}
 			}
 		}
 	}()
+
+	return resultCh
 }
 
 func errorHandler(w http.ResponseWriter, err string, statusCode int) {
@@ -181,19 +203,10 @@ func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 }
 
 func getOrgFromRequest(r *http.Request) string {
-	if !cfg.Chef.EnterpriseChef {
+	if cfg.Chef.Type != "enterprise" {
 		return ""
 	}
 	return mux.Vars(r)["org"]
-}
-
-func enableChefMetrics() bool {
-	for org, _ := range cfg.Customer {
-		if getEffectiveConfig("SaveChefMetrics", org).(bool) {
-			return true
-		}
-	}
-	return cfg.Default.SaveChefMetrics
 }
 
 func dropForce(r *http.Request) bool {

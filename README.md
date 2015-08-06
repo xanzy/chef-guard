@@ -1,8 +1,6 @@
 Chef-Guard [![Build Status](https://travis-ci.org/xanzy/chef-guard.svg)](https://travis-ci.org/xanzy/chef-guard) [![GoDoc](https://godoc.org/github.com/xanzy/chef-guard?status.svg)](https://godoc.org/github.com/xanzy/chef-guard)
 ==========
 
-**_NOTE: Even while the code is considered to be stable, Chef-Guard is still in BETA! So there will be some rapid changes to the code until version 1.0.0 is released!_**
-
 Chef-Guard is a feature rich [Chef](http://www.getchef.com) add-on that protects your Chef server from untested and uncommitted (i.e. potentially dangerous) cookbooks by running several validations and checks during the cookbook upload process. In addition Chef-Guard will also monitor, audit, save and email (including a diff with the actual change) all configuration changes and is even capable of validating certain changes before passing them through to Chef.
 
 So installing Chef-Guard onto your Chef server(s) will give you a highly configurable component that enables you to configure and enforce a common [workflow](http://xanzy.io/projects/chef-guard/workflows) for all your colleagues working with Chef.
@@ -19,7 +17,7 @@ _Assuming enough Chef knowledge, it shouldn't take more than 30 minutes to get y
 
 ## Building
 
-You don't need to build Chef-Guard yourself in order to use it. Pre-built binaries, instructions and a ready to use cookbook can all be found [here](http://xanzy.io/projects/chef-guard/installation/installation.html). If however you would like to contribute to Chef-Guard and/or just feel adventurous and want to build CHef-Guard yourself, please see the [contributing](https://github.com/xanzy/chef-guard/blob/master/contributing.md) documentation to get you started.
+You don't need to build Chef-Guard yourself in order to use it. Pre-built binaries, instructions and a ready to use cookbook can all be found [here](http://xanzy.io/projects/chef-guard/installation/installation.html). If however you would like to contribute to Chef-Guard and/or just feel adventurous and want to build Chef-Guard yourself, please see the [contributing](https://github.com/xanzy/chef-guard/blob/master/contributing.md) documentation to get you started.
 
 ## Getting Help
 
@@ -35,4 +33,3 @@ Sander van Harmelen (<sander@xanzy.io>)
 ## License
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at <http://www.apache.org/licenses/LICENSE-2.0>
-
