@@ -14,7 +14,7 @@ Chef-Guard CHANGELOG
 - Renamed the `s3key` and `s3secret` parameters to `bookshelfkey` and `bookshelfsecret` to better reflect their purpose
 - Changed the `enterprisechef` parameter to a `type` parameter allowing the values `enterprise`, `opensource` and `goiardi`
 - Changed the `listen` config parameter to a `listenip` and `listenport` parameter so the port to listen on can be configured (fixes GH-78)
-- Reverted the import rewrites done previously by `godep save -r` and just used `godep save` now
+- Reverted the import rewrites done previously by `godep save -r` and stopped using godep
 - Fixed a bug in the processChange func where a returned error was not properly handled (fixes GH-65)
 - Tar files uploaded to the supermarket will no longer contain files that are in the .gitignore or chefignore (fixes GH-56)
 - Added checks to verify content has actually changed before committing anything to Git (fixes GH-64)
