@@ -135,7 +135,7 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	}
 
 	for _, f := range cg.getAllCookbookFiles() {
-		ignore, err := cg.ignoreThisFile(f.Name)
+		ignore, err := cg.ignoreThisFile(f.Name, false)
 		if err != nil {
 			return fmt.Errorf("Ignore check failed for file %s: %s", f.Name, err)
 		}
