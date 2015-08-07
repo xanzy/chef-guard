@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.6.1
+-----
+- Fixed a small regression where the `metadata.rb` and/or `metadata.json` are not handled correctly
+
 0.6.0
 -----
 - Added support for using GitLab as git backend (fixes GH-61)

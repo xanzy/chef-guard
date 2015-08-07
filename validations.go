@@ -233,7 +233,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 				changed = append(changed, file)
 			}
 		} else {
-			ignore, err := cg.ignoreThisFile(file)
+			ignore, err := cg.ignoreThisFile(file, true)
 			if err != nil {
 				return http.StatusBadGateway, err
 			}
@@ -252,7 +252,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 	}
 	if len(sh) > 0 {
 		for file, _ := range sh {
-			ignore, err := cg.ignoreThisFile(file)
+			ignore, err := cg.ignoreThisFile(file, true)
 			if err != nil {
 				return http.StatusBadGateway, err
 			}
@@ -287,10 +287,12 @@ func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
 		"Failed to locate the source of the %s cookbook!", cg.Cookbook.Name)
 }
 
-func (cg *ChefGuard) ignoreThisFile(file string) (ignore bool, err error) {
-	// if file == "metadata.rb" || file == "metadata.json" || strings.HasPrefix(file, "spec/") {
-	// 	return true, nil
-	// }
+func (cg *ChefGuard) ignoreThisFile(file string, ignoreDefaultFiles bool) (ignore bool, err error) {
+	if ignoreDefaultFiles {
+		if file == "metadata.rb" || file == "metadata.json" || strings.HasPrefix(file, "spec/") {
+			return true, nil
+		}
+	}
 	ignore, err = pathspec.GitIgnore(bytes.NewReader(cg.GitIgnoreFile), file)
 	if ignore || err != nil {
 		return ignore, err
