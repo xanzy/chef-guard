@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.6.2 (UNRELEASED)
+-----
+- Filtered out node and client creations done by clients themselves. With Chef 12 this will be done with users credentials instead, which will be monitored
+
 0.6.1
 -----
 - Fixed a small regression where the `metadata.rb` and/or `metadata.json` are not handled correctly

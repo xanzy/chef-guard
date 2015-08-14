@@ -33,7 +33,8 @@ import (
 	"github.com/xanzy/chef-guard/git"
 )
 
-const VERSION = "0.6.0-UNRELEASED"
+// VERSION holds the current version
+const VERSION = "0.6.2-UNRELEASED"
 
 // The ChefGuard struct holds all required info needed to process a request made through Chef-Guard
 type ChefGuard struct {
