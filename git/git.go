@@ -17,16 +17,15 @@
 package git
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"crypto/tls"
-
-	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
 	"github.com/xanzy/go-gitlab"
+	"golang.org/x/oauth2"
 )
 
 // Git is an interface that must be implemented by any git service
@@ -107,16 +106,18 @@ func NewGitClient(c *Config) (Git, error) {
 }
 
 func newGitHubClient(c *Config) (Git, error) {
-	t := &oauth.Transport{
-		Token: &oauth.Token{AccessToken: c.Token},
-		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
+	tc := &http.Client{
+		Transport: &oauth2.Transport{
+			Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: c.Token}),
+			Base: &http.Transport{
+				Proxy:           http.ProxyFromEnvironment,
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
+			},
 		},
 	}
 
 	g := new(GitHub)
-	g.client = github.NewClient(t.Client())
+	g.client = github.NewClient(tc)
 
 	if c.ServerURL != "" {
 		// Make sure the URL ends with a single forward slash as the go-github package requires that

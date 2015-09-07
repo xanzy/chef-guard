@@ -3,6 +3,7 @@ Chef-Guard CHANGELOG
 
 0.6.2 (UNRELEASED)
 -----
+- Updated to a new oauth2 package as the old one wasn't supported anymore
 - Filtered out node and client creations done by clients themselves. With Chef 12 this will be done with users credentials instead, which will be monitored
 
 0.6.1
