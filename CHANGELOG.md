@@ -3,8 +3,9 @@ Chef-Guard CHANGELOG
 
 0.6.2 (UNRELEASED)
 -----
-- Updated to a new oauth2 package as the old one wasn't supported anymore
-- Filtered out node and client creations done by clients themselves. With Chef 12 this will be done with users credentials instead, which will be monitored
+- Fix a bug that could cause a nil pointer exception while handling GitHub and GitLab error responses
+- Update to a new oauth2 package as the old one wasn't supported anymore
+- Filter out node and client creations done by clients themselves. With Chef 12 this will be done with users credentials instead, which will be monitored
 
 0.6.1
 -----

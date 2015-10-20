@@ -31,7 +31,7 @@ import (
 type Name struct {
 	Name    string `json:"name"`
 	RawData struct {
-		Id string `json:"id"`
+		ID string `json:"id"`
 	} `json:"raw_data"`
 }
 
@@ -41,8 +41,8 @@ func unmarshalName(body []byte) (*Name, error) {
 		return nil, err
 	}
 	// Needed to get the correct name from data bag items
-	if n.RawData.Id != "" {
-		n.Name = n.RawData.Id
+	if n.RawData.ID != "" {
+		n.Name = n.RawData.ID
 	}
 	return &n, nil
 }
