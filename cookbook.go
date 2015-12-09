@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -111,15 +112,22 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
 
-	t := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
 	}
-	c := &http.Client{Transport: t}
 
 	// Let's first find and save the .gitignore and chefignore files
 	for _, f := range cg.Cookbook.RootFiles {
 		if f.Name == ".gitignore" || f.Name == "chefignore" {
-			content, err := downloadCookbookFile(c, *cg.OrganizationID, f.Checksum)
+			content, err := downloadCookbookFile(client, *cg.OrganizationID, f.Checksum)
 			if err != nil {
 				return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 			}
@@ -143,7 +151,7 @@ func (cg *ChefGuard) processCookbookFiles() error {
 			continue
 		}
 
-		content, err := downloadCookbookFile(c, *cg.OrganizationID, f.Checksum)
+		content, err := downloadCookbookFile(client, *cg.OrganizationID, f.Checksum)
 		if err != nil {
 			return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 		}

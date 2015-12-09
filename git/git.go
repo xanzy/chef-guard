@@ -19,9 +19,11 @@ package git
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/xanzy/go-gitlab"
@@ -110,8 +112,13 @@ func newGitHubClient(c *Config) (Git, error) {
 		Transport: &oauth2.Transport{
 			Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: c.Token}),
 			Base: &http.Transport{
-				Proxy:           http.ProxyFromEnvironment,
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
+				Proxy: http.ProxyFromEnvironment,
+				Dial: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).Dial,
+				TLSClientConfig:     &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
+				TLSHandshakeTimeout: 10 * time.Second,
 			},
 		},
 	}
@@ -135,8 +142,13 @@ func newGitHubClient(c *Config) (Git, error) {
 func newGitLabClient(c *Config) (Git, error) {
 	client := &http.Client{
 		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
+			Proxy: http.ProxyFromEnvironment,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
+			TLSHandshakeTimeout: 10 * time.Second,
 		},
 	}
 

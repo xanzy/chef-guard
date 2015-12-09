@@ -17,6 +17,7 @@
 package git
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -144,7 +145,16 @@ func (g *GitHub) DeleteDirectory(org, repo, msg string, dir interface{}, usr *Us
 
 // GetDiff implements the Git interface
 func (g *GitHub) GetDiff(org, repo, user, sha string) (string, error) {
-	commit, resp, err := g.client.Repositories.GetCommit(org, repo, sha)
+	u := fmt.Sprintf("repos/%v/%v/commits/%v", org, repo, sha)
+
+	req, err := g.client.NewRequest("GET", u, nil)
+	if err != nil {
+		return "", fmt.Errorf("Error creating new diff request: %v", err)
+	}
+	req.Header.Set("Accept", "application/vnd.github.V3.diff")
+
+	var diff bytes.Buffer
+	resp, err := g.client.Do(req, &diff)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitHubToken, org)
@@ -152,24 +162,21 @@ func (g *GitHub) GetDiff(org, repo, user, sha string) (string, error) {
 		return "", fmt.Errorf("Error retrieving commit %s: %v", sha, err)
 	}
 
-	if len(commit.Files) == 0 {
+	if diff.Len() == 0 {
 		return "", nil
 	}
 
 	const layout = "Mon Jan 2 3:04 2006"
 	t := time.Now()
-	msg := []string{fmt.Sprintf("Commit : %s\nDate   : %s\nUser   : %s",
+
+	msg := fmt.Sprintf("Commit : %s\nDate   : %s\nUser   : %s\n<br />%s",
 		sha,
 		t.Format(layout),
 		user,
-	)}
+		diff.String(),
+	)
 
-	for _, file := range commit.Files {
-		patch := fmt.Sprintf("<br />\nFile: %s\n%s\n", *file.Filename, *file.Patch)
-		msg = append(msg, patch)
-	}
-
-	return strings.Join(msg, "\n"), nil
+	return msg, nil
 }
 
 // GetArchiveLink implements the Git interface

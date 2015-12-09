@@ -26,20 +26,24 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/xanzy/go-pathspec"
 )
 
+// ErrorInfo is single type used for several different types of errors
 type ErrorInfo struct {
 	Error         string   `json:"error,omitempty"`
 	Errors        []string `json:"errors,omitempty"`
 	ErrorMessages []string `json:"error_messages,omitempty"`
 }
 
+// SourceCookbook represents the details of the cookbook used as source
 type SourceCookbook struct {
 	artifact     bool
 	private      bool
@@ -51,6 +55,7 @@ type SourceCookbook struct {
 	LocationPath string   `json:"location_path,omitempty"`
 }
 
+// Constraints holds all known contraints for a given cookbook
 type Constraints struct {
 	CookbookVersions map[string]string   `json:"cookbook_versions"`
 	RunList          []string            `json:"run_list"`
@@ -251,7 +256,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 			"Your upload contains more files than the source cookbook:\n - %s", strings.Join(missing, "\n - "))
 	}
 	if len(sh) > 0 {
-		for file, _ := range sh {
+		for file := range sh {
 			ignore, err := cg.ignoreThisFile(file, true)
 			if err != nil {
 				return http.StatusBadGateway, err
@@ -466,21 +471,21 @@ func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int,
 	if cb, exists := results[name]; exists {
 		if sc, exists := cb[version]; exists {
 			sc.artifact = true
-			u, err := communityDownloadUrl(sc.LocationPath, name, version)
+			u, err := communityDownloadURL(sc.LocationPath, name, version)
 			if err != nil {
 				return nil, http.StatusBadGateway, err
 			}
 			sc.DownloadURL = u
 			return sc, 0, nil
-		} else {
-			// Return error code 1 if the we can find the cookbook, but not the correct version
-			return nil, 1, nil
 		}
+
+		// Return error code 1 if the we can find the cookbook, but not the correct version
+		return nil, 1, nil
 	}
 	return nil, 0, nil
 }
 
-func communityDownloadUrl(path, name, version string) (*url.URL, error) {
+func communityDownloadURL(path, name, version string) (*url.URL, error) {
 	u, err := url.Parse(fmt.Sprintf(
 		"%s/cookbooks/%s/versions/%s", path, name, strings.Replace(version, ".", "_", -1)))
 	if err != nil {
@@ -536,10 +541,18 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 	if _, found := cfg.Git[sc.gitOrg]; !found {
 		return nil, fmt.Errorf("No Git config specified for: %s!", sc.gitOrg)
 	}
-	t := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Git[sc.gitOrg].SSLNoVerify},
-	}
-	return &http.Client{Transport: t}, nil
+
+	return &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: cfg.Git[sc.gitOrg].SSLNoVerify},
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
+	}, nil
 }
 
 func parseCookbookVersions(constraints map[string]string) map[string][]string {

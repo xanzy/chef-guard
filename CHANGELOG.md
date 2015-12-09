@@ -3,6 +3,9 @@ Chef-Guard CHANGELOG
 
 0.6.2 (UNRELEASED)
 -----
+- Added timeout options on all custom transports to prevent hanging http clients
+- Fix a bug that could cause a nil pointer exception when the Git diff was too large to include the patch in the commit details
+- Replaced the multisyncer package with an updated version hosted outside the Chef-Guard repo
 - Fix a bug that could cause a nil pointer exception while handling GitHub and GitLab error responses
 - Update to a new oauth2 package as the old one wasn't supported anymore
 - Filter out node and client creations done by clients themselves. With Chef 12 this will be done with users credentials instead, which will be monitored

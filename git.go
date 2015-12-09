@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/xanzy/chef-guard/git"
-	"github.com/xanzy/chef-guard/multisyncer"
+	"github.com/xanzy/multisyncer"
 )
 
 var ms multisyncer.MultiSyncer
@@ -35,10 +35,8 @@ func (cg *ChefGuard) syncedGitUpdate(action string, body []byte) {
 		ms = multisyncer.New()
 	}
 
-	token := <-ms.GetToken(cg.Repo)
-	defer func() {
-		ms.ReturnToken(cg.Repo) <- token
-	}()
+	ms.Lock(cg.Repo)
+	defer ms.Unlock(cg.Repo)
 
 	config, err := remarshalConfig(action, body)
 	if err != nil {

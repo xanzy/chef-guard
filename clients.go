@@ -96,7 +96,6 @@ func processDownload(w http.ResponseWriter, r *http.Request) {
 
 			targetmd5 := md5.Sum(data)
 			targetsha := sha256.Sum256(data)
-			data = nil
 
 			fmt.Fprintf(w, "url %s\nmd5 %x\nsha256 %x", targeturl, targetmd5, targetsha)
 		}
