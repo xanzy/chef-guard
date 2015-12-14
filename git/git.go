@@ -93,6 +93,7 @@ type GitHub struct {
 // GitLab represents a GitLab client
 type GitLab struct {
 	client *gitlab.Client
+	token  string
 }
 
 // NewGitClient returns either a GitHub or GitLab client as Git interface
@@ -152,7 +153,7 @@ func newGitLabClient(c *Config) (Git, error) {
 		},
 	}
 
-	g := new(GitLab)
+	g := &GitLab{token: c.Token}
 	g.client = gitlab.NewClient(client, c.Token)
 
 	if c.ServerURL != "" {

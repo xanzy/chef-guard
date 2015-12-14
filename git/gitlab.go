@@ -233,7 +233,13 @@ func (g *GitLab) GetArchiveLink(group, project, tag string) (*url.URL, error) {
 		return nil, fmt.Errorf("Error retrieving archive link of project %s: %v", project, err)
 	}
 
-	u, err := url.Parse(fmt.Sprintf("/%s/repository/archive?ref=%s", ns, tag))
+	u, err := url.Parse(
+		fmt.Sprintf("/api/v3/projects/%s/repository/archive.tar.gz?ref=%s&private_token=%s",
+			url.QueryEscape(ns),
+			tag,
+			g.token,
+		),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse archive link: %v", err)
 	}
