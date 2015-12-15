@@ -157,7 +157,9 @@ func newGitLabClient(c *Config) (Git, error) {
 	g.client = gitlab.NewClient(client, c.Token)
 
 	if c.ServerURL != "" {
-		g.client.SetBaseURL(c.ServerURL)
+		if err := g.client.SetBaseURL(c.ServerURL); err != nil {
+			return nil, err
+		}
 	}
 
 	return g, nil
