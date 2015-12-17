@@ -17,15 +17,18 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/icub3d/graceful"
@@ -35,6 +38,16 @@ import (
 
 // VERSION holds the current version
 const VERSION = "0.6.2-UNRELEASED"
+
+var insecureTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial,
+	TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+	TLSHandshakeTimeout: 10 * time.Second,
+}
 
 // The ChefGuard struct holds all required info needed to process a request made through Chef-Guard
 type ChefGuard struct {

@@ -23,13 +23,11 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -112,16 +110,10 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	gw := gzip.NewWriter(buf)
 	tw := tar.NewWriter(gw)
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: cfg.Chef.SSLNoVerify},
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
+	client := http.DefaultClient
+
+	if cfg.Chef.SSLNoVerify {
+		client.Transport = insecureTransport
 	}
 
 	// Let's first find and save the .gitignore and chefignore files

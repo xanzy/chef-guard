@@ -21,17 +21,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/md5"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/xanzy/go-pathspec"
 )
@@ -542,17 +539,13 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 		return nil, fmt.Errorf("No Git config specified for: %s!", sc.gitOrg)
 	}
 
-	return &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: cfg.Git[sc.gitOrg].SSLNoVerify},
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-	}, nil
+	client := http.DefaultClient
+
+	if cfg.Git[sc.gitOrg].SSLNoVerify {
+		client.Transport = insecureTransport
+	}
+
+	return client, nil
 }
 
 func parseCookbookVersions(constraints map[string]string) map[string][]string {

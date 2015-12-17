@@ -28,6 +28,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Name of the entity we are changing
 type Name struct {
 	Name    string `json:"name"`
 	RawData struct {

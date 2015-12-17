@@ -30,6 +30,16 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var insecureTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial,
+	TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+	TLSHandshakeTimeout: 10 * time.Second,
+}
+
 // Git is an interface that must be implemented by any git service
 // that can be used with Chef-Guard
 type Git interface {
@@ -109,23 +119,18 @@ func NewGitClient(c *Config) (Git, error) {
 }
 
 func newGitHubClient(c *Config) (Git, error) {
-	tc := &http.Client{
+	client := &http.Client{
 		Transport: &oauth2.Transport{
 			Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: c.Token}),
-			Base: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				Dial: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).Dial,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
-				TLSHandshakeTimeout: 10 * time.Second,
-			},
 		},
 	}
 
+	if c.SSLNoVerify {
+		client.Transport.(*oauth2.Transport).Base = insecureTransport
+	}
+
 	g := new(GitHub)
-	g.client = github.NewClient(tc)
+	g.client = github.NewClient(client)
 
 	if c.ServerURL != "" {
 		// Make sure the URL ends with a single forward slash as the go-github package requires that
@@ -141,16 +146,10 @@ func newGitHubClient(c *Config) (Git, error) {
 }
 
 func newGitLabClient(c *Config) (Git, error) {
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
+	client := http.DefaultClient
+
+	if c.SSLNoVerify {
+		client.Transport = insecureTransport
 	}
 
 	g := &GitLab{token: c.Token}
