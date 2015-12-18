@@ -1,6 +1,9 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.6.3 (UNRELEASED)
+-----
+
 0.6.2
 -----
 - Do not log empty error messages but instead try to capture a more useful message based on the given error 

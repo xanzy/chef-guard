@@ -37,7 +37,7 @@ import (
 )
 
 // VERSION holds the current version
-const VERSION = "0.6.2"
+const VERSION = "0.6.3 (UNRELEASED)"
 
 var insecureTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
