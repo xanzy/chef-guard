@@ -149,7 +149,7 @@ func newGitLabClient(c *Config) (Git, error) {
 	client := http.DefaultClient
 
 	if c.SSLNoVerify {
-		client.Transport = insecureTransport
+		client = &http.Client{Transport: insecureTransport}
 	}
 
 	g := &GitLab{token: c.Token}

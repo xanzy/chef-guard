@@ -33,13 +33,6 @@ import (
 	"github.com/xanzy/go-pathspec"
 )
 
-// ErrorInfo is single type used for several different types of errors
-type ErrorInfo struct {
-	Error         string   `json:"error,omitempty"`
-	Errors        []string `json:"errors,omitempty"`
-	ErrorMessages []string `json:"error_messages,omitempty"`
-}
-
 // SourceCookbook represents the details of the cookbook used as source
 type SourceCookbook struct {
 	artifact     bool
@@ -542,7 +535,7 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 	client := http.DefaultClient
 
 	if cfg.Git[sc.gitOrg].SSLNoVerify {
-		client.Transport = insecureTransport
+		client = &http.Client{Transport: insecureTransport}
 	}
 
 	return client, nil

@@ -37,7 +37,7 @@ import (
 )
 
 // VERSION holds the current version
-const VERSION = "0.6.2-UNRELEASED"
+const VERSION = "0.6.2"
 
 var insecureTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
@@ -206,9 +206,9 @@ func startSignalHandler() chan struct{} {
 
 func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 	switch statusCode {
-	case http.StatusNotFound:
-		// No need to write anything to the log for this one...
 	case http.StatusPreconditionFailed:
+		// No need to write anything to the log for this one...
+	case http.StatusNotFound:
 		WARNING.Println(err)
 	default:
 		ERROR.Println(err)

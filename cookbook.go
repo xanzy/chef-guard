@@ -25,6 +25,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -113,7 +114,7 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	client := http.DefaultClient
 
 	if cfg.Chef.SSLNoVerify {
-		client.Transport = insecureTransport
+		client = &http.Client{Transport: insecureTransport}
 	}
 
 	// Let's first find and save the .gitignore and chefignore files
@@ -395,20 +396,39 @@ func addMetadataJSON(tw *tar.Writer, cb *chef.CookbookVersion) error {
 	return nil
 }
 
+// ErrorInfo is single type used for several different types of errors
+type ErrorInfo struct {
+	Error         []string `json:"error,omitempty"`
+	Errors        []string `json:"errors,omitempty"`
+	ErrorMessages []string `json:"error_messages,omitempty"`
+}
+
 func checkHTTPResponse(resp *http.Response, allowedStates []int) error {
 	for _, s := range allowedStates {
 		if resp.StatusCode == s {
 			return nil
 		}
 	}
-	errInfo := new(ErrorInfo)
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("Failed to get body from call to %s: %s", resp.Request.URL.String(), err)
 	}
+
+	// Make sure we return an error, even if we have no error details
+	if len(body) == 0 {
+		return errors.New("No error details found")
+	}
+
 	// If this returns an error the return body is probably not JSON,
 	// in which case we just move on and return the raw body instead.
+	// Otherwise let's see if we parsed out some error details and
+	// return those.
+	errInfo := &ErrorInfo{}
 	if err := json.Unmarshal(body, errInfo); err == nil {
+		if errInfo.Error != nil {
+			return fmt.Errorf(strings.Join(errInfo.Error, ";"))
+		}
 		if errInfo.Errors != nil {
 			return fmt.Errorf(strings.Join(errInfo.Errors, ";"))
 		}
@@ -416,6 +436,9 @@ func checkHTTPResponse(resp *http.Response, allowedStates []int) error {
 			return fmt.Errorf(strings.Join(errInfo.ErrorMessages, ";"))
 		}
 	}
+
+	// If we could not marshal the body or we didn't parse any errors
+	// just return the raw body.
 	return fmt.Errorf(string(body))
 }
 

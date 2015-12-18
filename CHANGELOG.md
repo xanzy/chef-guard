@@ -1,8 +1,9 @@
 Chef-Guard CHANGELOG
 ====================
 
-0.6.2 (UNRELEASED)
+0.6.2
 -----
+- Do not log empty error messages but instead try to capture a more useful message based on the given error 
 - Add a shared `insecureTransport` transport that can be used by all connections, instead of creating seperate ones for each connection
 - Fix a bug that could cause a nil pointer exception when the Git diff was too large to include the patch in the commit details
 - Replaced the multisyncer package with an updated version hosted outside the Chef-Guard repo
