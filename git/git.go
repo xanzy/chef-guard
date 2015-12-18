@@ -17,17 +17,28 @@
 package git
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
-	"crypto/tls"
-
-	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
 	"github.com/xanzy/go-gitlab"
+	"golang.org/x/oauth2"
 )
+
+var insecureTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial,
+	TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+	TLSHandshakeTimeout: 10 * time.Second,
+}
 
 // Git is an interface that must be implemented by any git service
 // that can be used with Chef-Guard
@@ -92,6 +103,7 @@ type GitHub struct {
 // GitLab represents a GitLab client
 type GitLab struct {
 	client *gitlab.Client
+	token  string
 }
 
 // NewGitClient returns either a GitHub or GitLab client as Git interface
@@ -107,16 +119,18 @@ func NewGitClient(c *Config) (Git, error) {
 }
 
 func newGitHubClient(c *Config) (Git, error) {
-	t := &oauth.Transport{
-		Token: &oauth.Token{AccessToken: c.Token},
-		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
+	client := &http.Client{
+		Transport: &oauth2.Transport{
+			Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: c.Token}),
 		},
 	}
 
+	if c.SSLNoVerify {
+		client.Transport.(*oauth2.Transport).Base = insecureTransport
+	}
+
 	g := new(GitHub)
-	g.client = github.NewClient(t.Client())
+	g.client = github.NewClient(client)
 
 	if c.ServerURL != "" {
 		// Make sure the URL ends with a single forward slash as the go-github package requires that
@@ -132,18 +146,19 @@ func newGitHubClient(c *Config) (Git, error) {
 }
 
 func newGitLabClient(c *Config) (Git, error) {
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SSLNoVerify},
-		},
+	client := http.DefaultClient
+
+	if c.SSLNoVerify {
+		client = &http.Client{Transport: insecureTransport}
 	}
 
-	g := new(GitLab)
+	g := &GitLab{token: c.Token}
 	g.client = gitlab.NewClient(client, c.Token)
 
 	if c.ServerURL != "" {
-		g.client.SetBaseURL(c.ServerURL)
+		if err := g.client.SetBaseURL(c.ServerURL); err != nil {
+			return nil, err
+		}
 	}
 
 	return g, nil

@@ -1,6 +1,15 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.6.2
+-----
+- Do not log empty error messages but instead try to capture a more useful message based on the given error 
+- Add a shared `insecureTransport` transport that can be used by all connections, instead of creating seperate ones for each connection
+- Fix a bug that could cause a nil pointer exception when the Git diff was too large to include the patch in the commit details
+- Replaced the multisyncer package with an updated version hosted outside the Chef-Guard repo
+- Fix a bug that could cause a nil pointer exception while handling GitHub and GitLab error responses
+- Update to a new oauth2 package as the old one wasn't supported anymore
+
 0.6.1
 -----
 - Fixed a small regression where the `metadata.rb` and/or `metadata.json` are not handled correctly

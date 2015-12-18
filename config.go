@@ -24,7 +24,7 @@ import (
 	"regexp"
 	"strings"
 
-	"code.google.com/p/gcfg"
+	"gopkg.in/gcfg.v1"
 	"github.com/mitchellh/osext"
 	"github.com/xanzy/chef-guard/git"
 )

@@ -17,15 +17,18 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/icub3d/graceful"
@@ -33,7 +36,18 @@ import (
 	"github.com/xanzy/chef-guard/git"
 )
 
-const VERSION = "0.6.0-UNRELEASED"
+// VERSION holds the current version
+const VERSION = "0.6.2"
+
+var insecureTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial,
+	TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+	TLSHandshakeTimeout: 10 * time.Second,
+}
 
 // The ChefGuard struct holds all required info needed to process a request made through Chef-Guard
 type ChefGuard struct {
@@ -192,9 +206,9 @@ func startSignalHandler() chan struct{} {
 
 func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 	switch statusCode {
-	case http.StatusNotFound:
-		// No need to write anything to the log for this one...
 	case http.StatusPreconditionFailed:
+		// No need to write anything to the log for this one...
+	case http.StatusNotFound:
 		WARNING.Println(err)
 	default:
 		ERROR.Println(err)

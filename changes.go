@@ -28,10 +28,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Name of the entity we are changing
 type Name struct {
 	Name    string `json:"name"`
 	RawData struct {
-		Id string `json:"id"`
+		ID string `json:"id"`
 	} `json:"raw_data"`
 }
 
@@ -41,8 +42,8 @@ func unmarshalName(body []byte) (*Name, error) {
 		return nil, err
 	}
 	// Needed to get the correct name from data bag items
-	if n.RawData.Id != "" {
-		n.Name = n.RawData.Id
+	if n.RawData.ID != "" {
+		n.Name = n.RawData.ID
 	}
 	return &n, nil
 }
@@ -83,16 +84,17 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			return
 		}
 
-		r.URL, err = url.Parse(fmt.Sprintf(
-			"http://%s:%d%s?%s", cfg.Chef.ErchefIP, cfg.Chef.ErchefPort, r.URL.Path, r.URL.RawQuery))
+		u := fmt.Sprintf(
+			"http://%s:%d%s?%s",
+			cfg.Chef.ErchefIP,
+			cfg.Chef.ErchefPort,
+			r.URL.Path,
+			r.URL.RawQuery,
+		)
+
+		r.URL, err = url.Parse(u)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf(
-				"Failed to parse URL %s: %s", fmt.Sprintf(
-					"http://%s:%d%s?%s",
-					cfg.Chef.ErchefIP,
-					cfg.Chef.ErchefPort,
-					r.URL.Path,
-					r.URL.RawQuery), err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf("Failed to parse URL %s: %s", u, err), http.StatusBadGateway)
 			return
 		}
 
@@ -104,15 +106,19 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 		}
 		defer resp.Body.Close()
 
+		if err := checkHTTPResponse(resp, []int{http.StatusOK, http.StatusCreated}); err != nil {
+			if resp.StatusCode == http.StatusForbidden {
+				err = fmt.Errorf("%s %s for %s", r.Header.Get("X-Ops-Userid"), err, r.URL.Path)
+			}
+
+			errorHandler(w, err.Error(), resp.StatusCode)
+			return
+		}
+
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
 				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
-			return
-		}
-
-		if err := checkHTTPResponse(resp, []int{http.StatusOK, http.StatusCreated}); err != nil {
-			errorHandler(w, err.Error(), resp.StatusCode)
 			return
 		}
 

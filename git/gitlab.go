@@ -41,14 +41,15 @@ func (g *GitLab) GetContent(group, project, path string) (*File, interface{}, er
 	}
 	tree, resp, err := g.client.Repositories.ListTree(ns, treeOpts)
 	if err != nil {
-		switch resp.StatusCode {
-		case http.StatusNotFound:
-			return nil, nil, nil
-		case http.StatusUnauthorized:
-			return nil, nil, fmt.Errorf(invalidGitLabToken, group)
-		default:
-			return nil, nil, fmt.Errorf("Error retrieving tree for %s: %v", path, err)
+		if resp != nil {
+			switch resp.StatusCode {
+			case http.StatusNotFound:
+				return nil, nil, nil
+			case http.StatusUnauthorized:
+				return nil, nil, fmt.Errorf(invalidGitLabToken, group)
+			}
 		}
+		return nil, nil, fmt.Errorf("Error retrieving tree for %s: %v", path, err)
 	}
 
 	if len(tree) > 0 {
@@ -66,14 +67,15 @@ func (g *GitLab) GetContent(group, project, path string) (*File, interface{}, er
 	}
 	file, resp, err := g.client.RepositoryFiles.GetFile(ns, fileOpts)
 	if err != nil {
-		switch resp.StatusCode {
-		case http.StatusNotFound:
-			return nil, nil, nil
-		case http.StatusUnauthorized:
-			return nil, nil, fmt.Errorf(invalidGitLabToken, group)
-		default:
-			return nil, nil, fmt.Errorf("Error retrieving file %s: %v", path, err)
+		if resp != nil {
+			switch resp.StatusCode {
+			case http.StatusNotFound:
+				return nil, nil, nil
+			case http.StatusUnauthorized:
+				return nil, nil, fmt.Errorf(invalidGitLabToken, group)
+			}
 		}
+		return nil, nil, fmt.Errorf("Error retrieving file %s: %v", path, err)
 	}
 
 	f := &File{
@@ -105,7 +107,7 @@ func (g *GitLab) CreateFile(group, project, path, msg string, usr *User, content
 	}
 	_, resp, err := g.client.RepositoryFiles.CreateFile(ns, opts)
 	if err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, group)
 		}
 		return "", fmt.Errorf("Error creating file %s: %v", path, err)
@@ -126,7 +128,7 @@ func (g *GitLab) UpdateFile(group, project, path, sha, msg string, usr *User, co
 	}
 	_, resp, err := g.client.RepositoryFiles.UpdateFile(ns, opts)
 	if err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, group)
 		}
 		return "", fmt.Errorf("Error updating file %s: %v", path, err)
@@ -146,7 +148,7 @@ func (g *GitLab) DeleteFile(group, project, path, sha, msg string, usr *User) (s
 	}
 	_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
 	if err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, group)
 		}
 		return "", fmt.Errorf("Error deleting file %s: %v", path, err)
@@ -171,7 +173,7 @@ func (g *GitLab) DeleteDirectory(group, project, msg string, dir interface{}, us
 		}
 		_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
 		if err != nil {
-			if resp.StatusCode == http.StatusUnauthorized {
+			if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 				return fmt.Errorf(invalidGitLabToken, group)
 			}
 			return fmt.Errorf("Error deleting file %s: %v", file, err)
@@ -187,7 +189,7 @@ func (g *GitLab) GetDiff(group, project, user, sha string) (string, error) {
 
 	diffs, resp, err := g.client.Commits.GetCommitDiff(ns, sha)
 	if err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, group)
 		}
 		return "", fmt.Errorf("Error retrieving diff of commit %s: %v", sha, err)
@@ -220,17 +222,24 @@ func (g *GitLab) GetArchiveLink(group, project, tag string) (*url.URL, error) {
 
 	_, resp, err := g.client.Projects.GetProject(ns)
 	if err != nil {
-		switch resp.StatusCode {
-		case http.StatusNotFound:
-			return nil, nil
-		case http.StatusUnauthorized:
-			return nil, fmt.Errorf(invalidGitLabToken, group)
-		default:
-			return nil, fmt.Errorf("Error retrieving archive link of project %s: %v", project, err)
+		if resp != nil {
+			switch resp.StatusCode {
+			case http.StatusNotFound:
+				return nil, nil
+			case http.StatusUnauthorized:
+				return nil, fmt.Errorf(invalidGitLabToken, group)
+			}
 		}
+		return nil, fmt.Errorf("Error retrieving archive link of project %s: %v", project, err)
 	}
 
-	u, err := url.Parse(fmt.Sprintf("/%s/repository/archive?ref=%s", ns, tag))
+	u, err := url.Parse(
+		fmt.Sprintf("/api/v3/projects/%s/repository/archive.tar.gz?ref=%s&private_token=%s",
+			url.QueryEscape(ns),
+			tag,
+			g.token,
+		),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse archive link: %v", err)
 	}
@@ -250,7 +259,7 @@ func (g *GitLab) TagRepo(group, project, tag string, usr *User) error {
 	}
 	_, resp, err := g.client.Repositories.CreateTag(ns, opts)
 	if err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return fmt.Errorf(invalidGitLabToken, group)
 		}
 		return fmt.Errorf("Error creating tag for project %s: %v", project, err)
@@ -265,14 +274,15 @@ func (g *GitLab) TagExists(group, project, tag string) (bool, error) {
 
 	tags, resp, err := g.client.Repositories.ListTags(ns)
 	if err != nil {
-		switch resp.StatusCode {
-		case http.StatusNotFound:
-			return false, nil
-		case http.StatusUnauthorized:
-			return false, fmt.Errorf(invalidGitLabToken, group)
-		default:
-			return false, fmt.Errorf("Error retrieving tags of project %s: %v", project, err)
+		if resp != nil {
+			switch resp.StatusCode {
+			case http.StatusNotFound:
+				return false, nil
+			case http.StatusUnauthorized:
+				return false, fmt.Errorf(invalidGitLabToken, group)
+			}
 		}
+		return false, fmt.Errorf("Error retrieving tags of project %s: %v", project, err)
 	}
 
 	for _, t := range tags {
@@ -296,7 +306,7 @@ func (g *GitLab) shaOfLatestCommit(group, project string) (string, error) {
 
 	commit, resp, err := g.client.Commits.GetCommit(ns, "master")
 	if err != nil {
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, group)
 		}
 		return "", fmt.Errorf("Error retrieving SHA of latest commit: %v", err)
