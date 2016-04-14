@@ -24,11 +24,12 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/gcfg.v1"
 	"github.com/mitchellh/osext"
 	"github.com/xanzy/chef-guard/git"
+	"gopkg.in/gcfg.v1"
 )
 
+// Config represents the Chef-Guard configuration
 type Config struct {
 	Default struct {
 		ListenIP        string
@@ -47,6 +48,7 @@ type Config struct {
 		SearchGit       bool
 		PublishCookbook bool
 		Blacklist       string
+		DevEnvironment  string
 		GitOrganization string
 		GitCookbookOrgs string
 		IncludeFCs      string
@@ -65,6 +67,7 @@ type Config struct {
 		SearchGit       *bool
 		PublishCookbook *bool
 		Blacklist       *string
+		DevEnvironment  *string
 		GitCookbookOrgs *string
 		ExcludeFCs      *string
 	}

@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/xanzy/go-pathspec"
@@ -48,6 +49,8 @@ type SourceCookbook struct {
 // Constraints holds all known contraints for a given cookbook
 type Constraints struct {
 	CookbookVersions map[string]string   `json:"cookbook_versions"`
+	ChefType         string              `json:"chef_type"`
+	Environment      string              `json:"name"`
 	RunList          []string            `json:"run_list"`
 	EnvRunLists      map[string][]string `json:"env_run_lists"`
 }
@@ -137,7 +140,9 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 	if err != nil {
 		return http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
 	}
-	if c.CookbookVersions != nil {
+
+	devEnv := getEffectiveConfig("DevEnvironment", cg.Organization).(string)
+	if c.CookbookVersions != nil && (c.ChefType == "environment" && c.Environment != devEnv) {
 		errCode, err := cg.checkDependencies(parseCookbookVersions(c.CookbookVersions), true)
 		if err != nil {
 			if errCode == http.StatusPreconditionFailed {
@@ -238,10 +243,12 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 		}
 	}
 	if len(changed) > 0 {
+		sort.StringSlice(changed).Sort()
 		return http.StatusPreconditionFailed, fmt.Errorf(
 			"The following file(s) are changed:\n - %s", strings.Join(changed, "\n - "))
 	}
 	if len(missing) > 0 {
+		sort.StringSlice(missing).Sort()
 		return http.StatusPreconditionFailed, fmt.Errorf(
 			"Your upload contains more files than the source cookbook:\n - %s", strings.Join(missing, "\n - "))
 	}
@@ -256,6 +263,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 			}
 		}
 		if len(missing) > 0 {
+			sort.StringSlice(missing).Sort()
 			return http.StatusPreconditionFailed, fmt.Errorf(
 				"The source cookbook contains more files than your upload:\n - %s", strings.Join(missing, "\n - "))
 		}

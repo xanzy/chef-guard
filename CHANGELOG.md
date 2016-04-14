@@ -3,6 +3,8 @@ Chef-Guard CHANGELOG
 
 0.6.3 (UNRELEASED)
 -----
+- Order the files that are changed or missing before returning an error (GH-106)
+- Add a `devenvironment` config option; no dependency checks will be done for this environment
 
 0.6.2
 -----

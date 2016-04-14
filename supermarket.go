@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"regexp"
@@ -27,12 +28,27 @@ import (
 	"github.com/marpaia/chef-golang"
 )
 
+var supermarketKey string
+
 func setupSMClient() (*chef.Chef, error) {
-	smClient, err := chef.ConnectBuilder(cfg.Supermarket.Server, cfg.Supermarket.Port, "", cfg.Supermarket.User, cfg.Supermarket.Key, "")
+	if supermarketKey == "" {
+		key, err := ioutil.ReadFile(cfg.Supermarket.Key)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read Chef key: %s", err)
+		}
+
+		supermarketKey = string(key)
+	}
+
+	smClient, err := chef.ConnectBuilder(cfg.Supermarket.Server, cfg.Supermarket.Port, "", cfg.Supermarket.User, supermarketKey, "")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new Supermarket API connection: %s", err)
 	}
-	smClient.SSLNoVerify = cfg.Supermarket.SSLNoVerify
+
+	if cfg.Supermarket.SSLNoVerify {
+		smClient.Client = &http.Client{Transport: insecureTransport}
+	}
+
 	return smClient, nil
 }
 
@@ -40,36 +56,48 @@ func (cg *ChefGuard) publishCookbook() error {
 	if blackListed(cg.Organization, cg.Cookbook.Name) {
 		return nil
 	}
-	var err error
+
 	if cg.smClient == nil {
+		var err error
 		if cg.smClient, err = setupSMClient(); err != nil {
 			return err
 		}
 	}
+
 	buf := new(bytes.Buffer)
 	mw := multipart.NewWriter(buf)
+
 	fw, err := mw.CreateFormFile("tarball", fmt.Sprintf("%s.tgz", cg.Cookbook.Name))
 	if err != nil {
 		return fmt.Errorf("Failed to create form file: %s", err)
 	}
+
 	if _, err = fw.Write(cg.TarFile); err != nil {
 		return fmt.Errorf("Failed to add tar archive to the request: %s", err)
 	}
+
 	if fw, err = mw.CreateFormField("cookbook"); err != nil {
 		return fmt.Errorf("Failed to create form field: %s", err)
 	}
+
 	if _, err = fw.Write([]byte(`{"category":"other"}`)); err != nil {
 		return fmt.Errorf("Failed to add category to the request: %s", err)
 	}
-	mw.Close()
+
+	if err := mw.Close(); err != nil {
+		return fmt.Errorf("Failed to close the Supermarket tarball: %s", err)
+	}
 
 	resp, err := cg.smClient.Post("api/v1/cookbooks", mw.FormDataContentType(), nil, buf)
 	if err != nil {
 		return fmt.Errorf("Failed to upload %s to the Supermarket: %s", cg.Cookbook.Name, err)
 	}
+	defer resp.Body.Close()
+
 	if err := checkHTTPResponse(resp, []int{http.StatusCreated}); err != nil {
 		return fmt.Errorf("Failed to upload %s to the Supermarket: %s", cg.Cookbook.Name, err)
 	}
+
 	return nil
 }
 

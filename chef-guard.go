@@ -20,10 +20,12 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	_ "net/http/pprof" // enable debugging
 	"net/url"
 	"os"
 	"os/signal"
@@ -38,6 +40,8 @@ import (
 
 // VERSION holds the current version
 const VERSION = "0.6.3 (UNRELEASED)"
+
+var chefKey string
 
 var insecureTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
@@ -82,15 +86,31 @@ func newChefGuard(r *http.Request) (*ChefGuard, error) {
 	} else {
 		cg.Repo = "config"
 	}
+
 	// Initialize map for the file hashes
 	cg.FileHashes = map[string][16]byte{}
+
+	// Load the Chef key
+	if chefKey == "" {
+		key, err := ioutil.ReadFile(cfg.Chef.Key)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read Chef key: %s", err)
+		}
+
+		chefKey = string(key)
+	}
+
 	// Setup chefClient
 	var err error
-	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, "", cfg.Chef.User, cfg.Chef.Key, cg.Organization)
+	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, "", cfg.Chef.User, chefKey, cg.Organization)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new Chef API connection: %s", err)
 	}
-	cg.chefClient.SSLNoVerify = cfg.Chef.SSLNoVerify
+
+	if cfg.Chef.SSLNoVerify {
+		cg.chefClient.Client = &http.Client{Transport: insecureTransport}
+	}
+
 	return cg, nil
 }
 
