@@ -24,49 +24,52 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/gcfg.v1"
 	"github.com/mitchellh/osext"
 	"github.com/xanzy/chef-guard/git"
+	"gopkg.in/gcfg.v1"
 )
 
+// Config represents the Chef-Guard configuration
 type Config struct {
 	Default struct {
-		ListenIP        string
-		ListenPort      int
-		Logfile         string
-		Tempdir         string
-		Mode            string
-		MailDomain      string
-		MailServer      string
-		MailPort        int
-		MailSendBy      string
-		MailRecipient   string
-		ValidateChanges string
-		CommitChanges   bool
-		MailChanges     bool
-		SearchGit       bool
-		PublishCookbook bool
-		Blacklist       string
-		GitOrganization string
-		GitCookbookOrgs string
-		IncludeFCs      string
-		ExcludeFCs      string
+		ListenIP           string
+		ListenPort         int
+		Logfile            string
+		Tempdir            string
+		Mode               string
+		MailDomain         string
+		MailServer         string
+		MailPort           int
+		MailSendBy         string
+		MailRecipient      string
+		ValidateChanges    string
+		CommitChanges      bool
+		MailChanges        bool
+		SearchGit          bool
+		PublishCookbook    bool
+		Blacklist          string
+		DevEnvironment     string
+		GitConfig          string
+		GitCookbookConfigs string
+		IncludeFCs         string
+		ExcludeFCs         string
 	}
 	Customer map[string]*struct {
-		Mode            *string
-		MailDomain      *string
-		MailServer      *string
-		MailPort        *int
-		MailSendBy      *string
-		MailRecipient   *string
-		ValidateChanges *string
-		CommitChanges   *bool
-		MailChanges     *bool
-		SearchGit       *bool
-		PublishCookbook *bool
-		Blacklist       *string
-		GitCookbookOrgs *string
-		ExcludeFCs      *string
+		Mode               *string
+		MailDomain         *string
+		MailServer         *string
+		MailPort           *int
+		MailSendBy         *string
+		MailRecipient      *string
+		ValidateChanges    *string
+		CommitChanges      *bool
+		MailChanges        *bool
+		SearchGit          *bool
+		PublishCookbook    *bool
+		Blacklist          *string
+		DevEnvironment     *string
+		GitCookbookConfigs *string
+		ExcludeFCs         *string
 	}
 	Chef struct {
 		Type            string
@@ -165,11 +168,11 @@ func verifyRequiredFields(c *Config) error {
 	}
 
 	if c.Default.CommitChanges {
-		r["Default->GitOrganization"] = c.Default.GitOrganization
+		r["Default->GitConfig"] = c.Default.GitConfig
 	}
 
 	if c.Default.SearchGit {
-		r["Default->GitCookbookOrgs"] = c.Default.GitCookbookOrgs
+		r["Default->GitCookbookConfigs"] = c.Default.GitCookbookConfigs
 	}
 
 	if c.Default.PublishCookbook {
@@ -206,11 +209,14 @@ func verifyChefConfig(c *Config) error {
 
 func verifyGitConfigs(c *Config) error {
 	for k, v := range c.Git {
+		if v.Organization == "" {
+			v.Organization = k
+		}
 		if v.Type != "github" && v.Type != "gitlab" {
 			return fmt.Errorf("Invalid Git type %q! Valid types are 'github' and 'gitlab'.", v.Type)
 		}
 		if v.Token == "" {
-			return fmt.Errorf("No token found for %s organization %s! All configured organizations need to have a valid token.", v.Type, k)
+			return fmt.Errorf("No token found for %s organization %s! All configured organizations need to have a valid token.", v.Type, v.Organization)
 		}
 	}
 	return nil
@@ -249,9 +255,9 @@ func parsePaths(c *Config, ep string) error {
 	return nil
 }
 
-func getEffectiveConfig(key, org string) interface{} {
+func getEffectiveConfig(key, chefOrg string) interface{} {
 	if cfg.Chef.Type == "enterprise" {
-		if c, found := cfg.Customer[org]; found {
+		if c, found := cfg.Customer[chefOrg]; found {
 			conf := reflect.ValueOf(c).Elem()
 			v := conf.FieldByName(key)
 			if !v.IsNil() {

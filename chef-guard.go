@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -37,7 +38,9 @@ import (
 )
 
 // VERSION holds the current version
-const VERSION = "0.6.2"
+const VERSION = "0.7.0"
+
+var chefKey string
 
 var insecureTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
@@ -56,8 +59,8 @@ type ChefGuard struct {
 	gitClient      git.Git
 	User           string
 	Repo           string
-	Organization   string
-	OrganizationID *string
+	ChefOrg        string
+	ChefOrgID      *string
 	Cookbook       *chef.CookbookVersion
 	CookbookPath   string
 	SourceCookbook *SourceCookbook
@@ -72,25 +75,39 @@ type ChefGuard struct {
 func newChefGuard(r *http.Request) (*ChefGuard, error) {
 	cg := &ChefGuard{
 		User:         r.Header.Get("X-Ops-Userid"),
-		Organization: getOrgFromRequest(r),
+		ChefOrg:      getChefOrgFromRequest(r),
 		ForcedUpload: dropForce(r),
 	}
 
 	// Set the repo dependend on the Organization (could become a configurable in the future)
-	if cg.Organization != "" {
-		cg.Repo = cg.Organization
+	if cg.ChefOrg != "" {
+		cg.Repo = cg.ChefOrg
 	} else {
 		cg.Repo = "config"
 	}
+
 	// Initialize map for the file hashes
 	cg.FileHashes = map[string][16]byte{}
+
+	// Load the Chef key
+	if chefKey == "" {
+		key, err := ioutil.ReadFile(cfg.Chef.Key)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read Chef key: %s", err)
+		}
+
+		chefKey = string(key)
+	}
+
 	// Setup chefClient
 	var err error
-	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, "", cfg.Chef.User, cfg.Chef.Key, cg.Organization)
+	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, "", cfg.Chef.User, chefKey, cg.ChefOrg)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new Chef API connection: %s", err)
 	}
+
 	cg.chefClient.SSLNoVerify = cfg.Chef.SSLNoVerify
+
 	return cg, nil
 }
 
@@ -216,7 +233,7 @@ func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 	http.Error(w, err, statusCode)
 }
 
-func getOrgFromRequest(r *http.Request) string {
+func getChefOrgFromRequest(r *http.Request) string {
 	if cfg.Chef.Type != "enterprise" {
 		return ""
 	}

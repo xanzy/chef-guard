@@ -1,6 +1,12 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.7.0
+-----
+- Fixed a logical error which prevented the use of the same Github or Gitlab organization and/or group names. The fix for this contains a **backwards incompatible** change to the config file (GH-108)
+- Order the files that are changed or missing before returning an error (GH-106)
+- Add a `devenvironment` config option; no dependency checks will be done for this environment
+
 0.6.2
 -----
 - Do not log empty error messages but instead try to capture a more useful message based on the given error 
