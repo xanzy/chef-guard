@@ -25,7 +25,7 @@ import (
 
 func (cg *ChefGuard) executeChecks() (int, error) {
 	if cfg.Tests.Foodcritic != "" {
-		if errCode, err := runFoodcritic(cg.Organization, cg.CookbookPath); err != nil {
+		if errCode, err := runFoodcritic(cg.ChefOrg, cg.CookbookPath); err != nil {
 			if errCode == http.StatusBadGateway || !cg.continueAfterFailedCheck("foodcritic") {
 				return errCode, err
 			}
@@ -43,7 +43,7 @@ func (cg *ChefGuard) executeChecks() (int, error) {
 
 func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 	WARNING.Printf("%s errors when uploading cookbook '%s' for '%s'\n", strings.Title(check), cg.Cookbook.Name, cg.User)
-	if getEffectiveConfig("Mode", cg.Organization).(string) == "permissive" && cg.ForcedUpload {
+	if getEffectiveConfig("Mode", cg.ChefOrg).(string) == "permissive" && cg.ForcedUpload {
 		return true
 	}
 	return false

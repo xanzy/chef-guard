@@ -64,7 +64,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			return
 		}
 
-		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "enforced" &&
+		if getEffectiveConfig("ValidateChanges", cg.ChefOrg).(string) == "enforced" &&
 			r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {
 				errorHandler(w, err.Error(), errCode)
@@ -76,7 +76,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 		// 1. If we don't want to commit any changes, just return here.
 		// 2. If we do want to commit the changes, but we are a node updating itself also return
 		// here unless this is a client or node creation as we do want to see those ones.
-		if getEffectiveConfig("CommitChanges", cg.Organization).(bool) == false ||
+		if getEffectiveConfig("CommitChanges", cg.ChefOrg).(bool) == false ||
 			strings.HasPrefix(r.Header.Get("User-Agent"), "Chef Client") &&
 				r.Header.Get("X-Ops-Request-Source") != "web" &&
 				!((mux.Vars(r)["type"] == "clients" || mux.Vars(r)["type"] == "nodes") && r.Method == "POST") {
@@ -135,7 +135,7 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 			go cg.syncedGitUpdate(r.Method, reqBody)
 		}
 
-		if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" &&
+		if getEffectiveConfig("ValidateChanges", cg.ChefOrg).(string) == "permissive" &&
 			r.Method != "DELETE" {
 			if errCode, err := cg.validateConstraints(reqBody); err != nil {
 				errorHandler(w, err.Error(), errCode)

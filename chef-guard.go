@@ -25,7 +25,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
-	_ "net/http/pprof" // enable debugging
 	"net/url"
 	"os"
 	"os/signal"
@@ -39,7 +38,7 @@ import (
 )
 
 // VERSION holds the current version
-const VERSION = "0.6.3 (UNRELEASED)"
+const VERSION = "0.7.0"
 
 var chefKey string
 
@@ -60,8 +59,8 @@ type ChefGuard struct {
 	gitClient      git.Git
 	User           string
 	Repo           string
-	Organization   string
-	OrganizationID *string
+	ChefOrg        string
+	ChefOrgID      *string
 	Cookbook       *chef.CookbookVersion
 	CookbookPath   string
 	SourceCookbook *SourceCookbook
@@ -76,13 +75,13 @@ type ChefGuard struct {
 func newChefGuard(r *http.Request) (*ChefGuard, error) {
 	cg := &ChefGuard{
 		User:         r.Header.Get("X-Ops-Userid"),
-		Organization: getOrgFromRequest(r),
+		ChefOrg:      getChefOrgFromRequest(r),
 		ForcedUpload: dropForce(r),
 	}
 
 	// Set the repo dependend on the Organization (could become a configurable in the future)
-	if cg.Organization != "" {
-		cg.Repo = cg.Organization
+	if cg.ChefOrg != "" {
+		cg.Repo = cg.ChefOrg
 	} else {
 		cg.Repo = "config"
 	}
@@ -102,14 +101,12 @@ func newChefGuard(r *http.Request) (*ChefGuard, error) {
 
 	// Setup chefClient
 	var err error
-	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, "", cfg.Chef.User, chefKey, cg.Organization)
+	cg.chefClient, err = chef.ConnectBuilder(cfg.Chef.Server, cfg.Chef.Port, "", cfg.Chef.User, chefKey, cg.ChefOrg)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create new Chef API connection: %s", err)
 	}
 
-	if cfg.Chef.SSLNoVerify {
-		cg.chefClient.Client = &http.Client{Transport: insecureTransport}
-	}
+	cg.chefClient.SSLNoVerify = cfg.Chef.SSLNoVerify
 
 	return cg, nil
 }
@@ -236,7 +233,7 @@ func errorHandler(w http.ResponseWriter, err string, statusCode int) {
 	http.Error(w, err, statusCode)
 }
 
-func getOrgFromRequest(r *http.Request) string {
+func getChefOrgFromRequest(r *http.Request) string {
 	if cfg.Chef.Type != "enterprise" {
 		return ""
 	}

@@ -39,7 +39,7 @@ type SourceCookbook struct {
 	artifact     bool
 	private      bool
 	tagged       bool
-	gitOrg       string
+	gitConfig    string
 	File         string   `json:"file,omitempty"`
 	DownloadURL  *url.URL `json:"url"`
 	LocationType string   `json:"location_type"`
@@ -141,7 +141,7 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 		return http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
 	}
 
-	devEnv := getEffectiveConfig("DevEnvironment", cg.Organization).(string)
+	devEnv := getEffectiveConfig("DevEnvironment", cg.ChefOrg).(string)
 	if c.CookbookVersions != nil && (c.ChefType == "environment" && c.Environment != devEnv) {
 		errCode, err := cg.checkDependencies(parseCookbookVersions(c.CookbookVersions), true)
 		if err != nil {
@@ -163,7 +163,7 @@ func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 }
 
 func (cg *ChefGuard) formatConstraintsError(err error) error {
-	if getEffectiveConfig("ValidateChanges", cg.Organization).(string) == "permissive" {
+	if getEffectiveConfig("ValidateChanges", cg.ChefOrg).(string) == "permissive" {
 		return fmt.Errorf("\n==== Cookbook Constraints errors found ====\n"+
 			"RUNNNING PERMISSIVE MODE: CHANGES ARE SAVED\n"+
 			"\n%s\n"+
@@ -279,7 +279,7 @@ func (cg *ChefGuard) searchSourceCookbook() (errCode int, err error) {
 	if cg.SourceCookbook != nil {
 		return 0, nil
 	}
-	cg.SourceCookbook, errCode, err = searchPrivateCookbooks(cg.Organization, cg.Cookbook.Name, cg.Cookbook.Version)
+	cg.SourceCookbook, errCode, err = searchPrivateCookbooks(cg.ChefOrg, cg.Cookbook.Name, cg.Cookbook.Version)
 	if err != nil {
 		return errCode, err
 	}
@@ -402,7 +402,7 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 	return nil, 0, nil
 }
 
-func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, error) {
+func searchPrivateCookbooks(chefOrg, name, version string) (*SourceCookbook, int, error) {
 	if cfg.Supermarket.Server != "" {
 		var u string
 		switch cfg.Supermarket.Port {
@@ -422,13 +422,13 @@ func searchPrivateCookbooks(org, name, version string) (*SourceCookbook, int, er
 			return sc, 0, nil
 		}
 	}
-	if getEffectiveConfig("SearchGit", org).(bool) {
-		orgList := cfg.Default.GitCookbookOrgs
-		custOrgList := getEffectiveConfig("GitCookbookOrgs", org)
-		if orgList != custOrgList {
-			orgList = fmt.Sprintf("%s,%s", orgList, custOrgList)
+	if getEffectiveConfig("SearchGit", chefOrg).(bool) {
+		gitConfigs := cfg.Default.GitCookbookConfigs
+		custGitConfigs := getEffectiveConfig("GitCookbookConfigs", chefOrg)
+		if gitConfigs != custGitConfigs {
+			gitConfigs = fmt.Sprintf("%s,%s", gitConfigs, custGitConfigs)
 		}
-		sc, err := searchGit(strings.Split(orgList, ","), name, version, false)
+		sc, err := searchGit(strings.Split(gitConfigs, ","), name, version, false)
 		if err != nil {
 			return nil, http.StatusBadGateway, err
 		}
@@ -513,10 +513,10 @@ func communityDownloadURL(path, name, version string) (*url.URL, error) {
 	return u, nil
 }
 
-func searchGit(orgs []string, name, version string, tagsOnly bool) (*SourceCookbook, error) {
-	for _, org := range orgs {
-		org = strings.TrimSpace(org)
-		link, tagged, err := searchGitForCookbook(org, name, fmt.Sprintf("v%s", version), tagsOnly)
+func searchGit(gitConfigs []string, name, version string, tagsOnly bool) (*SourceCookbook, error) {
+	for _, gitConfig := range gitConfigs {
+		gitConfig = strings.TrimSpace(gitConfig)
+		link, tagged, err := searchGitForCookbook(gitConfig, name, fmt.Sprintf("v%s", version), tagsOnly)
 		if err != nil {
 			return nil, err
 		}
@@ -524,7 +524,7 @@ func searchGit(orgs []string, name, version string, tagsOnly bool) (*SourceCookb
 			sc := &SourceCookbook{LocationType: "git"}
 			sc.artifact = false
 			sc.tagged = tagged
-			sc.gitOrg = org
+			sc.gitConfig = gitConfig
 			sc.DownloadURL = link
 			return sc, nil
 		}
@@ -536,13 +536,13 @@ func newDownloadClient(sc *SourceCookbook) (*http.Client, error) {
 	if sc.LocationType != "git" {
 		return http.DefaultClient, nil
 	}
-	if _, found := cfg.Git[sc.gitOrg]; !found {
-		return nil, fmt.Errorf("No Git config specified for: %s!", sc.gitOrg)
+	if _, ok := cfg.Git[sc.gitConfig]; !ok {
+		return nil, fmt.Errorf("No Git config specified for: %s!", sc.gitConfig)
 	}
 
 	client := http.DefaultClient
 
-	if cfg.Git[sc.gitOrg].SSLNoVerify {
+	if gitConfig, ok := cfg.Git[sc.gitConfig]; ok && gitConfig.SSLNoVerify {
 		client = &http.Client{Transport: insecureTransport}
 	}
 

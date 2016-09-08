@@ -1,28 +1,27 @@
 [default]
-  listenip        = 127.0.0.2
-  listenport      = 8000
-  logfile         = /var/log/chef-guard.log
-  tempdir         = /var/tmp/chef-guard
-  mode            = silent        # Valid options are 'silent', 'permissive' and 'enforced'
-  maildomain      = company.com
-  mailserver      = smtp.company.com
-  mailport        = 25
-  mailsendby      =               # Leave blank to dynamically use the mailaddress of the user making the API call (preferred)
-  mailrecipient   = chef-changes@company.com
-  validatechanges = silent        # Valid options are 'silent', 'permissive' and 'enforced'
-  commitchanges   = false
-  mailchanges     = true
-  searchgit       = true
-  publishcookbook = true
-  blacklist       =               # This can be multiple regexes divided by a ','
-  devenvironment  =               # No dependency checks will be done for this environment
-  gitorganization = chef-guard
-  gitcookbookorgs = org1, org2    # When using multiple orgs (divided by a ','), the order here determines the lookup order!
-  includefcs      =               # This should be the full path to a custom .rb file containing your custom checks
-  excludefcs      =               # This can be multiple FC's divided by a ','
+  listenip           = 127.0.0.2
+  listenport         = 8000
+  logfile            = /var/log/chef-guard.log
+  tempdir            = /var/tmp/chef-guard
+  mode               = silent        # Valid options are 'silent', 'permissive' and 'enforced'
+  maildomain         = company.com
+  mailserver         = smtp.company.com
+  mailport           = 25
+  mailsendby         =               # Leave blank to dynamically use the mailaddress of the user making the API call (preferred)
+  mailrecipient      = chef-changes@company.com
+  validatechanges    = silent        # Valid options are 'silent', 'permissive' and 'enforced'
+  commitchanges      = false
+  mailchanges        = true
+  searchgit          = true
+  publishcookbook    = true
+  blacklist          =               # This can be multiple regexes divided by a ','
+  gitconfig          = chef-guard
+  gitcookbookconfigs = config1, config2  # When using multiple git configs (divided by a ','), the order here determines the lookup order!
+  includefcs         =                   # This should be the full path to a custom .rb file containing your custom checks
+  excludefcs         =                   # This can be multiple FC's divided by a ','
 
 [chef]
-  type            = enterprise    # Valid options are 'enterprise', 'opensource' and 'goiardi'
+  type            = enterprise       # Valid options are 'enterprise', 'opensource' and 'goiardi'
   version         = 11
   server          = chef.company.com
   port            = 443
@@ -39,7 +38,7 @@
 
 [community]
   supermarket     = https://supermarket.getchef.com
-  forks           = org1     # When using multiple orgs (divided by a ','), the order here determines the lookup order!
+  forks           = git1     # When using multiple git configs (divided by a ','), the order here determines the lookup order!
 
 [supermarket]
   server          = supermarket.company.com
@@ -55,11 +54,10 @@
 [git "chef-guard"]
   type            = github   # Valid options are 'github' and 'gitlab'
   serverurl       =          # Empty means that it will use github.com
-  sslnoverify     = false
   token           = xxx
 
 [git "demo2"]
-  type            = github   # Valid options are 'github' and 'gitlab'
+  type            = gitlab   # Valid options are 'github' and 'gitlab'
   serverurl       = https://github.company.com
   sslnoverify     = false
   token           = xxx
@@ -68,8 +66,7 @@
   commitchanges   = true
   mailchanges     = false
   mode            = enforced
-  devenvironment  = DEV
 
 [customer "demo2"]
-  mode            = enforced
-  gitcookbookorgs = demo2    # If customer org(s) are used in conjunction with default org(s), the default orgs are searched first!
+  mode               = enforced
+  gitcookbookconfigs = demo2 # If customer config(s) are used in conjunction with default config(s), the default configs are searched first!

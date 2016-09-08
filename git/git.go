@@ -44,34 +44,34 @@ var insecureTransport = &http.Transport{
 // that can be used with Chef-Guard
 type Git interface {
 	// GetContents retrieves file and/or directory contents from git
-	GetContent(string, string, string) (*File, interface{}, error)
+	GetContent(string, string) (*File, interface{}, error)
 
 	// CreateFile creates a new repository file
-	CreateFile(string, string, string, string, *User, []byte) (string, error)
+	CreateFile(string, string, string, *User, []byte) (string, error)
 
 	// UpdateFile updates a repository file
-	UpdateFile(string, string, string, string, string, *User, []byte) (string, error)
+	UpdateFile(string, string, string, string, *User, []byte) (string, error)
 
 	// DeleteFile deletes a repository file
-	DeleteFile(string, string, string, string, string, *User) (string, error)
+	DeleteFile(string, string, string, string, *User) (string, error)
 
 	// DeleteDirectory deletes a repository directory including all content
-	DeleteDirectory(string, string, string, interface{}, *User) error
+	DeleteDirectory(string, string, interface{}, *User) error
 
 	// GetDiff returns the diff and committer details
-	GetDiff(string, string, string, string) (string, error)
+	GetDiff(string, string, string) (string, error)
 
 	// GetArchiveLink returns a download link for the repo/tag combo
-	GetArchiveLink(string, string, string) (*url.URL, error)
+	GetArchiveLink(string, string) (*url.URL, error)
 
 	// TagRepo creates a new tag on a project
-	TagRepo(string, string, string, *User) error
+	TagRepo(string, string, *User) error
 
 	// TagExists returns true if the tag exists
-	TagExists(string, string, string) (bool, error)
+	TagExists(string, string) (bool, error)
 
 	// UntagRepo removes a new tag from a project
-	UntagRepo(string, string, string) error
+	UntagRepo(string, string) error
 }
 
 // User represents the user that is making the change
@@ -89,20 +89,23 @@ type File struct {
 
 // Config represents the configuration of a git service
 type Config struct {
-	Type        string
-	ServerURL   string
-	SSLNoVerify bool
-	Token       string
+	Organization string
+	Type         string
+	ServerURL    string
+	SSLNoVerify  bool
+	Token        string
 }
 
 // GitHub represents a GitHub client
 type GitHub struct {
 	client *github.Client
+	org    string
 }
 
 // GitLab represents a GitLab client
 type GitLab struct {
 	client *gitlab.Client
+	group  string
 	token  string
 }
 
@@ -142,6 +145,8 @@ func newGitHubClient(c *Config) (Git, error) {
 		g.client.BaseURL = u
 	}
 
+	g.org = c.Organization
+
 	return g, nil
 }
 
@@ -160,6 +165,8 @@ func newGitLabClient(c *Config) (Git, error) {
 			return nil, err
 		}
 	}
+
+	g.group = c.Organization
 
 	return g, nil
 }

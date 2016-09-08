@@ -44,7 +44,7 @@ import (
 
 func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if getEffectiveConfig("Mode", getOrgFromRequest(r)).(string) == "silent" && getEffectiveConfig("CommitChanges", getOrgFromRequest(r)).(bool) == false {
+		if getEffectiveConfig("Mode", getChefOrgFromRequest(r)).(string) == "silent" && getEffectiveConfig("CommitChanges", getChefOrgFromRequest(r)).(bool) == false {
 			p.ServeHTTP(w, r)
 			return
 		}
@@ -63,7 +63,7 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 				errorHandler(w, fmt.Sprintf("Failed to unmarshal body %s: %s", string(body), err), http.StatusBadGateway)
 				return
 			}
-			if getEffectiveConfig("Mode", cg.Organization).(string) != "silent" {
+			if getEffectiveConfig("Mode", cg.ChefOrg).(string) != "silent" {
 				if errCode, err := cg.checkCookbookFrozen(); err != nil {
 					if strings.Contains(r.Header.Get("User-Agent"), "Ridley") {
 						errCode = http.StatusConflict
@@ -93,7 +93,7 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 				}
 			}
 		}
-		if getEffectiveConfig("CommitChanges", cg.Organization).(bool) {
+		if getEffectiveConfig("CommitChanges", cg.ChefOrg).(bool) {
 			details := cg.getCookbookChangeDetails(r)
 			go cg.syncedGitUpdate(r.Method, details)
 		}
@@ -102,9 +102,9 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 }
 
 func (cg *ChefGuard) processCookbookFiles() error {
-	if cg.OrganizationID == nil {
+	if cg.ChefOrgID == nil {
 		if err := cg.getOrganizationID(); err != nil {
-			return fmt.Errorf("Failed to get organization ID for %s: %s", cg.Organization, err)
+			return fmt.Errorf("Failed to get organization ID for %s: %s", cg.ChefOrg, err)
 		}
 	}
 	buf := new(bytes.Buffer)
@@ -120,7 +120,7 @@ func (cg *ChefGuard) processCookbookFiles() error {
 	// Let's first find and save the .gitignore and chefignore files
 	for _, f := range cg.Cookbook.RootFiles {
 		if f.Name == ".gitignore" || f.Name == "chefignore" {
-			content, err := downloadCookbookFile(client, *cg.OrganizationID, f.Checksum)
+			content, err := downloadCookbookFile(client, *cg.ChefOrgID, f.Checksum)
 			if err != nil {
 				return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 			}
@@ -144,7 +144,7 @@ func (cg *ChefGuard) processCookbookFiles() error {
 			continue
 		}
 
-		content, err := downloadCookbookFile(client, *cg.OrganizationID, f.Checksum)
+		content, err := downloadCookbookFile(client, *cg.ChefOrgID, f.Checksum)
 		if err != nil {
 			return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 		}
@@ -230,7 +230,7 @@ func (cg *ChefGuard) getOrganizationID() error {
 	re := regexp.MustCompile(`^.*/organization-(.*)\/checksum-.*$`)
 	u := sb.Checksums["00000000000000000000000000000000"].URL
 	if res := re.FindStringSubmatch(u); res != nil {
-		cg.OrganizationID = &res[1]
+		cg.ChefOrgID = &res[1]
 		return nil
 	}
 	return fmt.Errorf("Could not find an organization ID in reply: %s", string(body))
@@ -255,17 +255,17 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 		tag := fmt.Sprintf("v%s", cg.Cookbook.Version)
 
 		if !cg.SourceCookbook.tagged {
-			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
-			err := tagCookbook(cg.SourceCookbook.gitOrg, cg.Cookbook.Name, tag, cg.User, mail)
+			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.ChefOrg).(string))
+			err := tagCookbook(cg.SourceCookbook.gitConfig, cg.Cookbook.Name, tag, cg.User, mail)
 			if err != nil {
 				return http.StatusBadGateway, err
 			}
 		}
-		if getEffectiveConfig("PublishCookbook", cg.Organization).(bool) && cg.SourceCookbook.private {
+		if getEffectiveConfig("PublishCookbook", cg.ChefOrg).(bool) && cg.SourceCookbook.private {
 			if err := cg.publishCookbook(); err != nil {
 				errText := err.Error()
 				if !cg.SourceCookbook.tagged {
-					err := untagCookbook(cg.SourceCookbook.gitOrg, cg.Cookbook.Name, tag)
+					err := untagCookbook(cg.SourceCookbook.gitConfig, cg.Cookbook.Name, tag)
 					if err != nil {
 						errText = fmt.Sprintf("%s - NOTE: Failed to untag the repo during cleanup!", errText)
 					}
@@ -292,7 +292,7 @@ func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 
 	source := "N/A"
 	if cg.SourceCookbook != nil {
-		source = cg.SourceCookbook.DownloadURL.String()
+		source = strings.Split(cg.SourceCookbook.DownloadURL.String(), "&")[0]
 	}
 
 	details := fmt.Sprintf(

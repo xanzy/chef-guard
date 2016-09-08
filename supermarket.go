@@ -45,15 +45,13 @@ func setupSMClient() (*chef.Chef, error) {
 		return nil, fmt.Errorf("Failed to create new Supermarket API connection: %s", err)
 	}
 
-	if cfg.Supermarket.SSLNoVerify {
-		smClient.Client = &http.Client{Transport: insecureTransport}
-	}
+	smClient.SSLNoVerify = cfg.Supermarket.SSLNoVerify
 
 	return smClient, nil
 }
 
 func (cg *ChefGuard) publishCookbook() error {
-	if blackListed(cg.Organization, cg.Cookbook.Name) {
+	if blackListed(cg.ChefOrg, cg.Cookbook.Name) {
 		return nil
 	}
 

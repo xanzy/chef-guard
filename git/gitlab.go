@@ -33,11 +33,11 @@ const (
 )
 
 // GetContent implements the Git interface
-func (g *GitLab) GetContent(group, project, path string) (*File, interface{}, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) GetContent(project, path string) (*File, interface{}, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	treeOpts := &gitlab.ListTreeOptions{
-		Path: path,
+		Path: gitlab.String(path),
 	}
 	tree, resp, err := g.client.Repositories.ListTree(ns, treeOpts)
 	if err != nil {
@@ -46,7 +46,7 @@ func (g *GitLab) GetContent(group, project, path string) (*File, interface{}, er
 			case http.StatusNotFound:
 				return nil, nil, nil
 			case http.StatusUnauthorized:
-				return nil, nil, fmt.Errorf(invalidGitLabToken, group)
+				return nil, nil, fmt.Errorf(invalidGitLabToken, g.group)
 			}
 		}
 		return nil, nil, fmt.Errorf("Error retrieving tree for %s: %v", path, err)
@@ -62,8 +62,8 @@ func (g *GitLab) GetContent(group, project, path string) (*File, interface{}, er
 	}
 
 	fileOpts := &gitlab.GetFileOptions{
-		FilePath: path,
-		Ref:      "master",
+		FilePath: gitlab.String(path),
+		Ref:      gitlab.String("master"),
 	}
 	file, resp, err := g.client.RepositoryFiles.GetFile(ns, fileOpts)
 	if err != nil {
@@ -72,7 +72,7 @@ func (g *GitLab) GetContent(group, project, path string) (*File, interface{}, er
 			case http.StatusNotFound:
 				return nil, nil, nil
 			case http.StatusUnauthorized:
-				return nil, nil, fmt.Errorf(invalidGitLabToken, group)
+				return nil, nil, fmt.Errorf(invalidGitLabToken, g.group)
 			}
 		}
 		return nil, nil, fmt.Errorf("Error retrieving file %s: %v", path, err)
@@ -96,70 +96,70 @@ func (g *GitLab) GetContent(group, project, path string) (*File, interface{}, er
 }
 
 // CreateFile implements the Git interface
-func (g *GitLab) CreateFile(group, project, path, msg string, usr *User, content []byte) (string, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) CreateFile(project, path, msg string, usr *User, content []byte) (string, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	opts := &gitlab.CreateFileOptions{
-		FilePath:      path,
-		BranchName:    "master",
-		Content:       string(content),
-		CommitMessage: msg,
+		FilePath:      gitlab.String(path),
+		BranchName:    gitlab.String("master"),
+		Content:       gitlab.String(string(content)),
+		CommitMessage: gitlab.String(msg),
 	}
 	_, resp, err := g.client.RepositoryFiles.CreateFile(ns, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-			return "", fmt.Errorf(invalidGitLabToken, group)
+			return "", fmt.Errorf(invalidGitLabToken, g.group)
 		}
 		return "", fmt.Errorf("Error creating file %s: %v", path, err)
 	}
 
-	return g.shaOfLatestCommit(group, project)
+	return g.shaOfLatestCommit(project)
 }
 
 // UpdateFile implements the Git interface
-func (g *GitLab) UpdateFile(group, project, path, sha, msg string, usr *User, content []byte) (string, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) UpdateFile(project, path, sha, msg string, usr *User, content []byte) (string, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	opts := &gitlab.UpdateFileOptions{
-		FilePath:      path,
-		BranchName:    "master",
-		Content:       string(content),
-		CommitMessage: msg,
+		FilePath:      gitlab.String(path),
+		BranchName:    gitlab.String("master"),
+		Content:       gitlab.String(string(content)),
+		CommitMessage: gitlab.String(msg),
 	}
 	_, resp, err := g.client.RepositoryFiles.UpdateFile(ns, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-			return "", fmt.Errorf(invalidGitLabToken, group)
+			return "", fmt.Errorf(invalidGitLabToken, g.group)
 		}
 		return "", fmt.Errorf("Error updating file %s: %v", path, err)
 	}
 
-	return g.shaOfLatestCommit(group, project)
+	return g.shaOfLatestCommit(project)
 }
 
 // DeleteFile implements the Git interface
-func (g *GitLab) DeleteFile(group, project, path, sha, msg string, usr *User) (string, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) DeleteFile(project, path, sha, msg string, usr *User) (string, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	opts := &gitlab.DeleteFileOptions{
-		FilePath:      path,
-		BranchName:    "master",
-		CommitMessage: msg,
+		FilePath:      gitlab.String(path),
+		BranchName:    gitlab.String("master"),
+		CommitMessage: gitlab.String(msg),
 	}
 	_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-			return "", fmt.Errorf(invalidGitLabToken, group)
+			return "", fmt.Errorf(invalidGitLabToken, g.group)
 		}
 		return "", fmt.Errorf("Error deleting file %s: %v", path, err)
 	}
 
-	return g.shaOfLatestCommit(group, project)
+	return g.shaOfLatestCommit(project)
 }
 
 // DeleteDirectory implements the Git interface
-func (g *GitLab) DeleteDirectory(group, project, msg string, dir interface{}, usr *User) error {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) DeleteDirectory(project, msg string, dir interface{}, usr *User) error {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	for _, file := range dir.([]string) {
 		// Need a special case for when deleting data bag items
@@ -167,14 +167,14 @@ func (g *GitLab) DeleteDirectory(group, project, msg string, dir interface{}, us
 		msg := fmt.Sprintf(msg, strings.TrimSuffix(fn, ".json"))
 
 		opts := &gitlab.DeleteFileOptions{
-			FilePath:      file,
-			BranchName:    "master",
-			CommitMessage: msg,
+			FilePath:      gitlab.String(file),
+			BranchName:    gitlab.String("master"),
+			CommitMessage: gitlab.String(msg),
 		}
 		_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
 		if err != nil {
 			if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-				return fmt.Errorf(invalidGitLabToken, group)
+				return fmt.Errorf(invalidGitLabToken, g.group)
 			}
 			return fmt.Errorf("Error deleting file %s: %v", file, err)
 		}
@@ -184,13 +184,13 @@ func (g *GitLab) DeleteDirectory(group, project, msg string, dir interface{}, us
 }
 
 // GetDiff implements the Git interface
-func (g *GitLab) GetDiff(group, project, user, sha string) (string, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) GetDiff(project, user, sha string) (string, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	diffs, resp, err := g.client.Commits.GetCommitDiff(ns, sha)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-			return "", fmt.Errorf(invalidGitLabToken, group)
+			return "", fmt.Errorf(invalidGitLabToken, g.group)
 		}
 		return "", fmt.Errorf("Error retrieving diff of commit %s: %v", sha, err)
 	}
@@ -217,8 +217,8 @@ func (g *GitLab) GetDiff(group, project, user, sha string) (string, error) {
 }
 
 // GetArchiveLink implements the Git interface
-func (g *GitLab) GetArchiveLink(group, project, tag string) (*url.URL, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) GetArchiveLink(project, tag string) (*url.URL, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	_, resp, err := g.client.Projects.GetProject(ns)
 	if err != nil {
@@ -227,7 +227,7 @@ func (g *GitLab) GetArchiveLink(group, project, tag string) (*url.URL, error) {
 			case http.StatusNotFound:
 				return nil, nil
 			case http.StatusUnauthorized:
-				return nil, fmt.Errorf(invalidGitLabToken, group)
+				return nil, fmt.Errorf(invalidGitLabToken, g.group)
 			}
 		}
 		return nil, fmt.Errorf("Error retrieving archive link of project %s: %v", project, err)
@@ -248,19 +248,19 @@ func (g *GitLab) GetArchiveLink(group, project, tag string) (*url.URL, error) {
 }
 
 // TagRepo implements the Git interface
-func (g *GitLab) TagRepo(group, project, tag string, usr *User) error {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) TagRepo(project, tag string, usr *User) error {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 	message := fmt.Sprint("Tagged by Chef-Guard\n")
 
 	opts := &gitlab.CreateTagOptions{
-		TagName: tag,
-		Ref:     "master",
-		Message: message,
+		TagName: gitlab.String(tag),
+		Ref:     gitlab.String("master"),
+		Message: gitlab.String(message),
 	}
 	_, resp, err := g.client.Repositories.CreateTag(ns, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-			return fmt.Errorf(invalidGitLabToken, group)
+			return fmt.Errorf(invalidGitLabToken, g.group)
 		}
 		return fmt.Errorf("Error creating tag for project %s: %v", project, err)
 	}
@@ -269,8 +269,8 @@ func (g *GitLab) TagRepo(group, project, tag string, usr *User) error {
 }
 
 // TagExists implements the Git interface
-func (g *GitLab) TagExists(group, project, tag string) (bool, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) TagExists(project, tag string) (bool, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	tags, resp, err := g.client.Repositories.ListTags(ns)
 	if err != nil {
@@ -279,7 +279,7 @@ func (g *GitLab) TagExists(group, project, tag string) (bool, error) {
 			case http.StatusNotFound:
 				return false, nil
 			case http.StatusUnauthorized:
-				return false, fmt.Errorf(invalidGitLabToken, group)
+				return false, fmt.Errorf(invalidGitLabToken, g.group)
 			}
 		}
 		return false, fmt.Errorf("Error retrieving tags of project %s: %v", project, err)
@@ -295,19 +295,19 @@ func (g *GitLab) TagExists(group, project, tag string) (bool, error) {
 }
 
 // UntagRepo implements the Git interface
-func (g *GitLab) UntagRepo(group, project, version string) error {
+func (g *GitLab) UntagRepo(project, version string) error {
 	// Not implemented in the GitLab API, so could not implement this
 	// functionality at this moment...
 	return nil
 }
 
-func (g *GitLab) shaOfLatestCommit(group, project string) (string, error) {
-	ns := fmt.Sprintf("%s/%s", group, project)
+func (g *GitLab) shaOfLatestCommit(project string) (string, error) {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	commit, resp, err := g.client.Commits.GetCommit(ns, "master")
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-			return "", fmt.Errorf(invalidGitLabToken, group)
+			return "", fmt.Errorf(invalidGitLabToken, g.group)
 		}
 		return "", fmt.Errorf("Error retrieving SHA of latest commit: %v", err)
 	}

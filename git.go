@@ -73,7 +73,12 @@ func (cg *ChefGuard) syncedGitUpdate(action string, body []byte) {
 func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (string, error) {
 	var err error
 	if cg.gitClient == nil {
-		if cg.gitClient, err = git.NewGitClient(cfg.Git[cfg.Default.GitOrganization]); err != nil {
+		gitConfig, ok := cfg.Git[cfg.Default.GitConfig]
+		if !ok {
+			return "", fmt.Errorf("No Git config specified for: %s!", cfg.Default.GitConfig)
+		}
+
+		if cg.gitClient, err = git.NewGitClient(gitConfig); err != nil {
 			return "", fmt.Errorf("Failed to create Git client: %s", err)
 		}
 	}
@@ -84,11 +89,11 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (string, err
 	)
 	user := &git.User{
 		Name: cg.User,
-		Mail: fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string)),
+		Mail: fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.ChefOrg).(string)),
 	}
 
 	path := fmt.Sprintf("%s/%s", cg.ChangeDetails.Type, cg.ChangeDetails.Item)
-	file, dir, err := cg.gitClient.GetContent(cfg.Default.GitOrganization, cg.Repo, path)
+	file, dir, err := cg.gitClient.GetContent(cg.Repo, path)
 	if err != nil {
 		return "", err
 	}
@@ -99,13 +104,13 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (string, err
 		}
 
 		msg = fmt.Sprintf(msg, "created")
-		return cg.gitClient.CreateFile(cfg.Default.GitOrganization, cg.Repo, path, msg, user, config)
+		return cg.gitClient.CreateFile(cg.Repo, path, msg, user, config)
 	}
 
 	if file != nil {
 		if action == "DELETE" {
 			msg = fmt.Sprintf(msg, "deleted")
-			return cg.gitClient.DeleteFile(cfg.Default.GitOrganization, cg.Repo, path, file.SHA, msg, user)
+			return cg.gitClient.DeleteFile(cg.Repo, path, file.SHA, msg, user)
 		}
 
 		if file.Content == string(config) {
@@ -113,22 +118,21 @@ func (cg *ChefGuard) writeConfigToGit(action string, config []byte) (string, err
 		}
 
 		msg = fmt.Sprintf(msg, "updated")
-		return cg.gitClient.UpdateFile(
-			cfg.Default.GitOrganization, cg.Repo, path, file.SHA, msg, user, config)
+		return cg.gitClient.UpdateFile(cg.Repo, path, file.SHA, msg, user, config)
 	}
 
 	if dir != nil && action == "DELETE" {
 		msg = fmt.Sprintf("Config for %s %%s deleted by Chef-Guard",
 			strings.TrimSuffix(cg.ChangeDetails.Type, "s"),
 		)
-		return "master", cg.gitClient.DeleteDirectory(cfg.Default.GitOrganization, cg.Repo, msg, dir, user)
+		return "master", cg.gitClient.DeleteDirectory(cg.Repo, msg, dir, user)
 	}
 
 	return "", fmt.Errorf("Unknown error while updating file or directory content of %s", path)
 }
 
 func (cg *ChefGuard) mailChanges(file, sha, action string) error {
-	if getEffectiveConfig("MailChanges", cg.Organization).(bool) == false {
+	if getEffectiveConfig("MailChanges", cg.ChefOrg).(bool) == false {
 		return nil
 	}
 
@@ -140,17 +144,17 @@ func (cg *ChefGuard) mailChanges(file, sha, action string) error {
 	var subject string
 	switch action {
 	case "POST":
-		subject = fmt.Sprintf("[%s CHEF] created %s", strings.ToUpper(cg.Organization), file)
+		subject = fmt.Sprintf("[%s CHEF] created %s", strings.ToUpper(cg.ChefOrg), file)
 	case "PUT":
-		subject = fmt.Sprintf("[%s CHEF] updated %s", strings.ToUpper(cg.Organization), file)
+		subject = fmt.Sprintf("[%s CHEF] updated %s", strings.ToUpper(cg.ChefOrg), file)
 	case "DELETE":
-		subject = fmt.Sprintf("[%s CHEF] deleted %s", strings.ToUpper(cg.Organization), file)
+		subject = fmt.Sprintf("[%s CHEF] deleted %s", strings.ToUpper(cg.ChefOrg), file)
 	}
 
 	msg := createMessage(cg.Repo, cg.User, diff, subject)
-	mail := getEffectiveConfig("MailSendBy", cg.Organization).(string)
+	mail := getEffectiveConfig("MailSendBy", cg.ChefOrg).(string)
 	if mail == "" {
-		mail = fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.Organization).(string))
+		mail = fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.ChefOrg).(string))
 	}
 
 	return mailDiff(cg.Repo, mail, msg)
@@ -159,12 +163,17 @@ func (cg *ChefGuard) mailChanges(file, sha, action string) error {
 func (cg *ChefGuard) getDiff(sha string) (string, error) {
 	var err error
 	if cg.gitClient == nil {
-		if cg.gitClient, err = git.NewGitClient(cfg.Git[cfg.Default.GitOrganization]); err != nil {
+		gitConfig, ok := cfg.Git[cfg.Default.GitConfig]
+		if !ok {
+			return "", fmt.Errorf("No Git config specified for: %s!", cfg.Default.GitConfig)
+		}
+
+		if cg.gitClient, err = git.NewGitClient(gitConfig); err != nil {
 			return "", fmt.Errorf("Failed to create Git client: %s", err)
 		}
 	}
 
-	return cg.gitClient.GetDiff(cfg.Default.GitOrganization, cg.Repo, cg.User, sha)
+	return cg.gitClient.GetDiff(cg.Repo, cg.User, sha)
 }
 
 func createMessage(org, user, diff, subject string) string {
@@ -243,14 +252,14 @@ func mailDiff(org, from, msg string) error {
 	return c.Quit()
 }
 
-func searchGitForCookbook(org, repo, tag string, taggedOnly bool) (*url.URL, bool, error) {
-	gitClient, err := getCustomClient(org)
+func searchGitForCookbook(gitConfig, repo, tag string, taggedOnly bool) (*url.URL, bool, error) {
+	gitClient, err := getCustomClient(gitConfig)
 	if err != nil {
 		return nil, false, fmt.Errorf("Failed to create custom Git client: %s", err)
 	}
 
 	// First check if a tag exists
-	tagged, err := gitClient.TagExists(org, repo, tag)
+	tagged, err := gitClient.TagExists(repo, tag)
 	if err != nil {
 		return nil, false, err
 	}
@@ -264,7 +273,7 @@ func searchGitForCookbook(org, repo, tag string, taggedOnly bool) (*url.URL, boo
 	}
 
 	// Get the archive link for the tagged version or master
-	link, err := gitClient.GetArchiveLink(org, repo, tag)
+	link, err := gitClient.GetArchiveLink(repo, tag)
 	if err != nil {
 		return nil, tagged, err
 	}
@@ -272,13 +281,13 @@ func searchGitForCookbook(org, repo, tag string, taggedOnly bool) (*url.URL, boo
 	return link, tagged, nil
 }
 
-func tagCookbook(org, cookbook, tag, user, mail string) error {
-	gitClient, err := getCustomClient(org)
+func tagCookbook(gitConfig, cookbook, tag, user, mail string) error {
+	gitClient, err := getCustomClient(gitConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to create custom Git client: %s", err)
 	}
 
-	exists, err := gitClient.TagExists(org, cookbook, tag)
+	exists, err := gitClient.TagExists(cookbook, tag)
 	if exists || err != nil {
 		return err
 	}
@@ -288,25 +297,25 @@ func tagCookbook(org, cookbook, tag, user, mail string) error {
 		Mail: mail,
 	}
 
-	return gitClient.TagRepo(org, cookbook, tag, usr)
+	return gitClient.TagRepo(cookbook, tag, usr)
 }
 
-func untagCookbook(org, cookbook, tag string) error {
-	gitClient, err := getCustomClient(org)
+func untagCookbook(gitConfig, cookbook, tag string) error {
+	gitClient, err := getCustomClient(gitConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to create custom Git client: %s", err)
 	}
 
-	return gitClient.UntagRepo(org, cookbook, tag)
+	return gitClient.UntagRepo(cookbook, tag)
 }
 
-func getCustomClient(org string) (git.Git, error) {
-	c, found := cfg.Git[org]
-	if !found {
-		return nil, fmt.Errorf("No Git config specified for organization: %s!", org)
+func getCustomClient(gitConfig string) (git.Git, error) {
+	gc, ok := cfg.Git[gitConfig]
+	if !ok {
+		return nil, fmt.Errorf("No Git config specified for: %s!", gitConfig)
 	}
 
-	return git.NewGitClient(c)
+	return git.NewGitClient(gc)
 }
 
 func remarshalConfig(action string, data []byte) ([]byte, error) {
