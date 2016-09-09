@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.7.1 (UNRELEASED)
+------------------
+- Make sure the private token is not exposed
+
 0.7.0
 -----
 - Fixed a logical error which prevented the use of the same Github or Gitlab organization and/or group names. The fix for this contains a **backwards incompatible** change to the config file (GH-108)

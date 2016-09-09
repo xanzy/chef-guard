@@ -36,10 +36,12 @@ import (
 
 // SourceCookbook represents the details of the cookbook used as source
 type SourceCookbook struct {
-	artifact     bool
-	private      bool
-	tagged       bool
-	gitConfig    string
+	artifact  bool
+	private   bool
+	tagged    bool
+	gitConfig string
+	sourceURL string
+
 	File         string   `json:"file,omitempty"`
 	DownloadURL  *url.URL `json:"url"`
 	LocationType string   `json:"location_type"`
@@ -117,17 +119,17 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 					"or, if you really need to change something, make a fork and\n"+
 					"and create a pull request back to the community cookbook\n"+
 					"before trying to upload the cookbook again.\n"+
-					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
+					"=====================================\n", err, cg.SourceCookbook.sourceURL)
 			case "git":
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
 					"%s\n\nSource: %s\n\n"+
 					"Make sure all your changes are merged into the central\n"+
 					"repositories before trying to upload the cookbook again.\n"+
-					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
+					"=====================================\n", err, cg.SourceCookbook.sourceURL)
 			default:
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
 					"%s\n\nSource: %s\n"+
-					"=====================================\n", err, cg.SourceCookbook.DownloadURL)
+					"=====================================\n", err, cg.SourceCookbook.sourceURL)
 			}
 		}
 		return errCode, err
@@ -316,13 +318,13 @@ func (cg *ChefGuard) getSourceFileHashes() (map[string][16]byte, error) {
 	resp, err := client.Get(cg.SourceCookbook.DownloadURL.String())
 	if err != nil {
 		return nil, fmt.Errorf(
-			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
+			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.sourceURL, err)
 	}
 	defer resp.Body.Close()
 
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
 		return nil, fmt.Errorf(
-			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.DownloadURL.String(), err)
+			"Failed to download the cookbook from %s: %s", cg.SourceCookbook.sourceURL, err)
 	}
 
 	var tr *tar.Reader
@@ -474,6 +476,7 @@ func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int,
 				return nil, http.StatusBadGateway, err
 			}
 			sc.DownloadURL = u
+			sc.sourceURL = strings.Split(u.String(), "&")[0]
 			return sc, 0, nil
 		}
 
@@ -526,6 +529,7 @@ func searchGit(gitConfigs []string, name, version string, tagsOnly bool) (*Sourc
 			sc.tagged = tagged
 			sc.gitConfig = gitConfig
 			sc.DownloadURL = link
+			sc.sourceURL = strings.Split(link.String(), "&")[0]
 			return sc, nil
 		}
 	}

@@ -38,7 +38,7 @@ import (
 )
 
 // VERSION holds the current version
-const VERSION = "0.7.0"
+const VERSION = "0.7.1 (UNRELEASED)"
 
 var chefKey string
 
