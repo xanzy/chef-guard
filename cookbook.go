@@ -292,7 +292,7 @@ func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 
 	source := "N/A"
 	if cg.SourceCookbook != nil {
-		source = strings.Split(cg.SourceCookbook.DownloadURL.String(), "&")[0]
+		source = cg.SourceCookbook.sourceURL
 	}
 
 	details := fmt.Sprintf(
