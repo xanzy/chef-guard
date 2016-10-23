@@ -23,6 +23,7 @@ import (
 	"net/smtp"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/xanzy/chef-guard/git"
 	"github.com/xanzy/multisyncer"
@@ -37,6 +38,9 @@ func (cg *ChefGuard) syncedGitUpdate(action string, body []byte) {
 
 	ms.Lock(cg.Repo)
 	defer ms.Unlock(cg.Repo)
+
+	// Once we get the lock, we wait for 500ms to prevent DDOS'ing the Git backend.
+	time.Sleep(1 * time.Second)
 
 	config, err := remarshalConfig(action, body)
 	if err != nil {

@@ -265,5 +265,6 @@ func (g *GitHub) UntagRepo(repo, tag string) error {
 		}
 		return fmt.Errorf("Error deleting tag %s: %v", tag, err)
 	}
+
 	return nil
 }

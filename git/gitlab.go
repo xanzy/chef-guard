@@ -17,6 +17,7 @@
 package git
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -102,6 +103,8 @@ func (g *GitLab) CreateFile(project, path, msg string, usr *User, content []byte
 	opts := &gitlab.CreateFileOptions{
 		FilePath:      gitlab.String(path),
 		BranchName:    gitlab.String("master"),
+		AuthorEmail:   &usr.Mail,
+		AuthorName:    &usr.Name,
 		Content:       gitlab.String(string(content)),
 		CommitMessage: gitlab.String(msg),
 	}
@@ -123,6 +126,8 @@ func (g *GitLab) UpdateFile(project, path, sha, msg string, usr *User, content [
 	opts := &gitlab.UpdateFileOptions{
 		FilePath:      gitlab.String(path),
 		BranchName:    gitlab.String("master"),
+		AuthorEmail:   &usr.Mail,
+		AuthorName:    &usr.Name,
 		Content:       gitlab.String(string(content)),
 		CommitMessage: gitlab.String(msg),
 	}
@@ -144,6 +149,8 @@ func (g *GitLab) DeleteFile(project, path, sha, msg string, usr *User) (string, 
 	opts := &gitlab.DeleteFileOptions{
 		FilePath:      gitlab.String(path),
 		BranchName:    gitlab.String("master"),
+		AuthorEmail:   &usr.Mail,
+		AuthorName:    &usr.Name,
 		CommitMessage: gitlab.String(msg),
 	}
 	_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
@@ -169,6 +176,8 @@ func (g *GitLab) DeleteDirectory(project, msg string, dir interface{}, usr *User
 		opts := &gitlab.DeleteFileOptions{
 			FilePath:      gitlab.String(file),
 			BranchName:    gitlab.String("master"),
+			AuthorEmail:   &usr.Mail,
+			AuthorName:    &usr.Name,
 			CommitMessage: gitlab.String(msg),
 		}
 		_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
@@ -185,35 +194,43 @@ func (g *GitLab) DeleteDirectory(project, msg string, dir interface{}, usr *User
 
 // GetDiff implements the Git interface
 func (g *GitLab) GetDiff(project, user, sha string) (string, error) {
-	ns := fmt.Sprintf("%s/%s", g.group, project)
+	u := fmt.Sprintf("/%s/%s/commit/%s.diff", g.group, project, sha)
 
-	diffs, resp, err := g.client.Commits.GetCommitDiff(ns, sha)
+	req, err := g.client.NewRequest("GET", u, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Make sure we do not use the API path here!
+	req.URL, err = req.URL.Parse(u)
+	if err != nil {
+		return "", err
+	}
+
+	var diff bytes.Buffer
+	resp, err := g.client.Do(req, &diff)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, g.group)
 		}
-		return "", fmt.Errorf("Error retrieving diff of commit %s: %v", sha, err)
+		return "", fmt.Errorf("Error retrieving commit %s: %v", sha, err)
 	}
 
-	if len(diffs) == 0 {
+	if diff.Len() == 0 {
 		return "", nil
 	}
 
 	const layout = "Mon Jan 2 3:04 2006"
 	t := time.Now()
-	msg := []string{fmt.Sprintf("Commit : %s\nDate   : %s\nUser   : %s",
+
+	msg := fmt.Sprintf("Commit : %s\nDate   : %s\nUser   : %s\n<br />%s",
 		sha,
 		t.Format(layout),
 		user,
-	)}
+		diff.String(),
+	)
 
-	for _, diff := range diffs {
-		start := strings.Index(diff.Diff, "@@")
-		patch := fmt.Sprintf("<br />\nFile: %s\n%s\n", diff.NewPath, diff.Diff[start:])
-		msg = append(msg, patch)
-	}
-
-	return strings.Join(msg, "\n"), nil
+	return msg, nil
 }
 
 // GetArchiveLink implements the Git interface
@@ -234,8 +251,8 @@ func (g *GitLab) GetArchiveLink(project, tag string) (*url.URL, error) {
 	}
 
 	u, err := url.Parse(
-		fmt.Sprintf("/api/v3/projects/%s/repository/archive.tar.gz?ref=%s&private_token=%s",
-			url.QueryEscape(ns),
+		fmt.Sprintf("/%s/repository/archive.tar.gz?ref=%s&private_token=%s",
+			ns,
 			tag,
 			g.token,
 		),
@@ -257,7 +274,7 @@ func (g *GitLab) TagRepo(project, tag string, usr *User) error {
 		Ref:     gitlab.String("master"),
 		Message: gitlab.String(message),
 	}
-	_, resp, err := g.client.Repositories.CreateTag(ns, opts)
+	_, resp, err := g.client.Tags.CreateTag(ns, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return fmt.Errorf(invalidGitLabToken, g.group)
@@ -272,7 +289,7 @@ func (g *GitLab) TagRepo(project, tag string, usr *User) error {
 func (g *GitLab) TagExists(project, tag string) (bool, error) {
 	ns := fmt.Sprintf("%s/%s", g.group, project)
 
-	tags, resp, err := g.client.Repositories.ListTags(ns)
+	tags, resp, err := g.client.Tags.ListTags(ns)
 	if err != nil {
 		if resp != nil {
 			switch resp.StatusCode {
@@ -295,9 +312,17 @@ func (g *GitLab) TagExists(project, tag string) (bool, error) {
 }
 
 // UntagRepo implements the Git interface
-func (g *GitLab) UntagRepo(project, version string) error {
-	// Not implemented in the GitLab API, so could not implement this
-	// functionality at this moment...
+func (g *GitLab) UntagRepo(project, tag string) error {
+	ns := fmt.Sprintf("%s/%s", g.group, project)
+
+	resp, err := g.client.Tags.DeleteTag(ns, tag)
+	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
+			return fmt.Errorf(invalidGitLabToken, g.group)
+		}
+		return fmt.Errorf("Error deleting tag %s: %v", tag, err)
+	}
+
 	return nil
 }
 
