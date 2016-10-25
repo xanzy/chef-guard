@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -52,6 +53,10 @@ func (cg *ChefGuard) continueAfterFailedCheck(check string) bool {
 func runFoodcritic(org, cookbookPath string) (int, error) {
 	args := getFoodcriticArgs(org, cookbookPath)
 	cmd := exec.Command(cfg.Tests.Foodcritic, args...)
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "RUBY_THREAD_VM_STACK_SIZE=2097152")
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return http.StatusBadGateway, fmt.Errorf("Failed to execute foodcritic tests: %s - %s", output, err)
