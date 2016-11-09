@@ -1,0 +1,163 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "oJGkod8y/3GTbKfazzQM+nQOPR0=",
+			"path": "github.com/golang/protobuf/proto",
+			"revision": "4bd1920723d7b7c925de087aa32e2187708897f7",
+			"revisionTime": "2016-11-09T07:27:36Z"
+		},
+		{
+			"checksumSHA1": "lgk38ggoIH2I3nzcgerykYAf8pY=",
+			"path": "github.com/google/go-github/github",
+			"revision": "e4194fe26c3379788dc1671da379f719351f093e",
+			"revisionTime": "2016-09-28T04:39:25Z"
+		},
+		{
+			"checksumSHA1": "yyAzHoiVLu+xywYI2BDyRq6sOqE=",
+			"path": "github.com/google/go-querystring/query",
+			"revision": "9235644dd9e52eeae6fa48efd539fdc351a0af53",
+			"revisionTime": "2016-03-11T01:20:12Z"
+		},
+		{
+			"checksumSHA1": "iIUYZyoanCQQTUaWsu8b+iOSPt4=",
+			"path": "github.com/gorilla/context",
+			"revision": "aed02d124ae4a0e94fea4541c8effd05bf0c8296",
+			"revisionTime": "2016-05-25T20:33:19Z"
+		},
+		{
+			"checksumSHA1": "H5f7qNqZl8N83s9cyC7Q1eWgAtI=",
+			"path": "github.com/gorilla/mux",
+			"revision": "9fa818a44c2bf1396a17f9d5a3c0f6dd39d2ff8e",
+			"revisionTime": "2016-06-05T23:35:21Z"
+		},
+		{
+			"checksumSHA1": "AUn4LEdn50IpP1opBQYAB7e8H3w=",
+			"path": "github.com/icub3d/graceful",
+			"revision": "c35c025755083a2eebf319a0eef319e123eef884",
+			"revisionTime": "2015-04-26T16:18:02Z"
+		},
+		{
+			"checksumSHA1": "Yb12ppWWbUgMkSEvg5DkKnLHsvs=",
+			"path": "github.com/marpaia/chef-golang",
+			"revision": "5fe70d58f5837a55b7298c730b1c90615bfae25b",
+			"revisionTime": "2016-02-24T22:33:42Z"
+		},
+		{
+			"checksumSHA1": "7g/EV92CaG2DuYj510U7J9+MDtg=",
+			"path": "github.com/mitchellh/osext",
+			"revision": "5e2d6d41470f99c881826dedd8c526728b783c9c",
+			"revisionTime": "2015-10-18T00:30:38Z"
+		},
+		{
+			"checksumSHA1": "KDtxxeKp59+USTblnUVRGqgF844=",
+			"path": "github.com/xanzy/go-gitlab",
+			"revision": "81953bbc50d933cc959a29389683fe0f365c1a2f",
+			"revisionTime": "2016-10-25T07:53:01Z"
+		},
+		{
+			"checksumSHA1": "PbrhX6QjbhT/tTv0rnZpxthQDRs=",
+			"path": "github.com/xanzy/go-pathspec",
+			"revision": "1df22d11e0dfefec0469a9f2c7c4588308b9a5c0",
+			"revisionTime": "2014-08-15T15:24:10Z"
+		},
+		{
+			"checksumSHA1": "tMyUAidN1gicjP8EWUbsmmQA0r0=",
+			"path": "github.com/xanzy/multisyncer",
+			"revision": "170d66c6ef90bd0242b6845d282460eca9165821",
+			"revisionTime": "2015-12-09T09:07:34Z"
+		},
+		{
+			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
+			"path": "golang.org/x/net/context",
+			"revision": "40d3034e575b6eafbca34e64224da61de35ae04c",
+			"revisionTime": "2016-11-01T21:56:08Z"
+		},
+		{
+			"checksumSHA1": "mktBVED98G2vv+OKcSgtnFVZC1Y=",
+			"path": "golang.org/x/oauth2",
+			"revision": "8a57ed94ffd43444c0879fe75701732a38afc985",
+			"revisionTime": "2015-12-30T04:02:54Z"
+		},
+		{
+			"checksumSHA1": "st9F4RETvsjcEHmnMvF9XvlAxDE=",
+			"path": "golang.org/x/oauth2/internal",
+			"revision": "8a57ed94ffd43444c0879fe75701732a38afc985",
+			"revisionTime": "2015-12-30T04:02:54Z"
+		},
+		{
+			"checksumSHA1": "RFOR8FkiWl+dGZQ1K/93GGfHpV4=",
+			"path": "google.golang.org/appengine/internal",
+			"revision": "b667a5000b082e49c6c6d16867d376a12e9490cd",
+			"revisionTime": "2015-05-27T04:07:48Z"
+		},
+		{
+			"checksumSHA1": "jn1QD8l5L2prhFu4TBr5UJGWv+U=",
+			"path": "google.golang.org/appengine/internal/base",
+			"revision": "b667a5000b082e49c6c6d16867d376a12e9490cd",
+			"revisionTime": "2015-05-27T04:07:48Z"
+		},
+		{
+			"checksumSHA1": "d7gnJPecSOiGmS5PAvkcb2H0fR8=",
+			"path": "google.golang.org/appengine/internal/datastore",
+			"revision": "b667a5000b082e49c6c6d16867d376a12e9490cd",
+			"revisionTime": "2015-05-27T04:07:48Z"
+		},
+		{
+			"checksumSHA1": "AhjFXWn4iHHXdzrCthekxNrpSrY=",
+			"path": "google.golang.org/appengine/internal/log",
+			"revision": "b667a5000b082e49c6c6d16867d376a12e9490cd",
+			"revisionTime": "2015-05-27T04:07:48Z"
+		},
+		{
+			"checksumSHA1": "qE60x+fVEJSg88w1HjKK59aevyo=",
+			"path": "google.golang.org/appengine/internal/remote_api",
+			"revision": "b667a5000b082e49c6c6d16867d376a12e9490cd",
+			"revisionTime": "2015-05-27T04:07:48Z"
+		},
+		{
+			"checksumSHA1": "3NeX54KztL1k8gSV28RKugdklAA=",
+			"path": "google.golang.org/appengine/internal/urlfetch",
+			"revision": "b667a5000b082e49c6c6d16867d376a12e9490cd",
+			"revisionTime": "2015-05-27T04:07:48Z"
+		},
+		{
+			"checksumSHA1": "akOV9pYnCbcPA8wJUutSQVibdyg=",
+			"path": "google.golang.org/appengine/urlfetch",
+			"revision": "b667a5000b082e49c6c6d16867d376a12e9490cd",
+			"revisionTime": "2015-05-27T04:07:48Z"
+		},
+		{
+			"checksumSHA1": "7E+wlsgFE3g4oZj0e3y7YPCjfbs=",
+			"path": "gopkg.in/gcfg.v1",
+			"revision": "27e4946190b4a327b539185f2b5b1f7c84730728",
+			"revisionTime": "2016-08-14T19:51:52Z"
+		},
+		{
+			"checksumSHA1": "LExJ7qoRMacllJ0cGb0mYpK1b/s=",
+			"path": "gopkg.in/gcfg.v1/scanner",
+			"revision": "27e4946190b4a327b539185f2b5b1f7c84730728",
+			"revisionTime": "2016-08-14T19:51:52Z"
+		},
+		{
+			"checksumSHA1": "9agO8MliOVQGjMcOIV7g7LPHeFY=",
+			"path": "gopkg.in/gcfg.v1/token",
+			"revision": "27e4946190b4a327b539185f2b5b1f7c84730728",
+			"revisionTime": "2016-08-14T19:51:52Z"
+		},
+		{
+			"checksumSHA1": "A2FpDz2muvMPC91Ec63wmUPfxFE=",
+			"path": "gopkg.in/gcfg.v1/types",
+			"revision": "27e4946190b4a327b539185f2b5b1f7c84730728",
+			"revisionTime": "2016-08-14T19:51:52Z"
+		},
+		{
+			"checksumSHA1": "ALQFMX3kmJkyB/8VEzVnGZG1H4A=",
+			"path": "gopkg.in/warnings.v0",
+			"revision": "8a331561fe74dadba6edfc59f3be66c22c3b065d",
+			"revisionTime": "2016-08-15T18:11:09Z"
+		}
+	],
+	"rootPath": "github.com/xanzy/chef-guard"
+}
