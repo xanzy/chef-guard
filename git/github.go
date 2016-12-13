@@ -185,7 +185,6 @@ func (g *GitHub) GetArchiveLink(repo, tag string) (*url.URL, error) {
 		g.org, repo, github.Tarball, &github.RepositoryContentGetOptions{Ref: tag})
 	if err != nil {
 		if resp != nil {
-			resp.Response.Body.Close()
 			switch resp.StatusCode {
 			case http.StatusNotFound:
 				return nil, nil

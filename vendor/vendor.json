@@ -9,10 +9,10 @@
 			"revisionTime": "2016-11-09T07:27:36Z"
 		},
 		{
-			"checksumSHA1": "lgk38ggoIH2I3nzcgerykYAf8pY=",
+			"checksumSHA1": "9luIafMlP101wKAmQHfBC3h/Dss=",
 			"path": "github.com/google/go-github/github",
-			"revision": "e4194fe26c3379788dc1671da379f719351f093e",
-			"revisionTime": "2016-09-28T04:39:25Z"
+			"revision": "466070b0580728e63bd1a415e0019639e55d7148",
+			"revisionTime": "2016-12-07T09:37:23Z"
 		},
 		{
 			"checksumSHA1": "yyAzHoiVLu+xywYI2BDyRq6sOqE=",
@@ -39,10 +39,10 @@
 			"revisionTime": "2015-04-26T16:18:02Z"
 		},
 		{
-			"checksumSHA1": "Yb12ppWWbUgMkSEvg5DkKnLHsvs=",
+			"checksumSHA1": "I65AK2dRL1QMNmLlNXQRSLdo0Rw=",
 			"path": "github.com/marpaia/chef-golang",
-			"revision": "5fe70d58f5837a55b7298c730b1c90615bfae25b",
-			"revisionTime": "2016-02-24T22:33:42Z"
+			"revision": "398ed29843b17cf5f17a4e6f03a6e9210e25ca21",
+			"revisionTime": "2016-12-09T21:28:04Z"
 		},
 		{
 			"checksumSHA1": "7g/EV92CaG2DuYj510U7J9+MDtg=",
