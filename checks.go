@@ -27,14 +27,14 @@ import (
 func (cg *ChefGuard) executeChecks() (int, error) {
 	if cfg.Tests.Foodcritic != "" {
 		if errCode, err := runFoodcritic(cg.ChefOrg, cg.CookbookPath); err != nil {
-			if errCode == http.StatusBadGateway || !cg.continueAfterFailedCheck("foodcritic") {
+			if errCode == http.StatusInternalServerError || !cg.continueAfterFailedCheck("foodcritic") {
 				return errCode, err
 			}
 		}
 	}
 	if cfg.Tests.Rubocop != "" {
 		if errCode, err := runRubocop(cg.CookbookPath); err != nil {
-			if errCode == http.StatusBadGateway || !cg.continueAfterFailedCheck("rubocop") {
+			if errCode == http.StatusInternalServerError || !cg.continueAfterFailedCheck("rubocop") {
 				return errCode, err
 			}
 		}
@@ -59,7 +59,7 @@ func runFoodcritic(org, cookbookPath string) (int, error) {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return http.StatusBadGateway, fmt.Errorf("Failed to execute foodcritic tests: %s - %s", output, err)
+		return http.StatusInternalServerError, fmt.Errorf("Failed to execute foodcritic tests: %s - %s", output, err)
 	}
 	if strings.TrimSpace(string(output)) != "" {
 		errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
@@ -94,7 +94,7 @@ func runRubocop(cookbookPath string) (int, error) {
 			errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
 			return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", errText)
 		}
-		return http.StatusBadGateway, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
+		return http.StatusInternalServerError, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
 	}
 	return 0, nil
 }

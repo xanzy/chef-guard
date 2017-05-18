@@ -50,17 +50,17 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 		}
 		cg, err := newChefGuard(r)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to create a new ChefGuard structure: %s", err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf("Failed to create a new ChefGuard structure: %s", err), http.StatusInternalServerError)
 			return
 		}
 		if r.Method != "DELETE" {
 			body, err := dumpBody(r)
 			if err != nil {
-				errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
+				errorHandler(w, fmt.Sprintf("Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadRequest)
 				return
 			}
 			if err := json.Unmarshal(body, &cg.Cookbook); err != nil {
-				errorHandler(w, fmt.Sprintf("Failed to unmarshal body %s: %s", string(body), err), http.StatusBadGateway)
+				errorHandler(w, fmt.Sprintf("Failed to unmarshal body %s: %s", string(body), err), http.StatusBadRequest)
 				return
 			}
 			if getEffectiveConfig("Mode", cg.ChefOrg).(string) != "silent" {
@@ -74,7 +74,7 @@ func processCookbook(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.R
 				if cg.Cookbook.Frozen {
 					cg.CookbookPath = path.Join(cfg.Default.Tempdir, fmt.Sprintf("%s-%s", r.Header.Get("X-Ops-Userid"), cg.Cookbook.Name))
 					if err := cg.processCookbookFiles(); err != nil {
-						errorHandler(w, err.Error(), http.StatusBadGateway)
+						errorHandler(w, err.Error(), http.StatusBadRequest)
 						return
 					}
 					defer func() {
@@ -258,7 +258,7 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 			mail := fmt.Sprintf("%s@%s", cg.User, getEffectiveConfig("MailDomain", cg.ChefOrg).(string))
 			err := tagCookbook(cg.SourceCookbook.gitConfig, cg.Cookbook.Name, tag, cg.User, mail)
 			if err != nil {
-				return http.StatusBadGateway, err
+				return http.StatusBadRequest, err
 			}
 		}
 		if getEffectiveConfig("PublishCookbook", cg.ChefOrg).(bool) && cg.SourceCookbook.private {
@@ -270,7 +270,7 @@ func (cg *ChefGuard) tagAndPublishCookbook() (int, error) {
 						errText = fmt.Sprintf("%s - NOTE: Failed to untag the repo during cleanup!", errText)
 					}
 				}
-				return http.StatusBadGateway, fmt.Errorf(errText)
+				return http.StatusBadRequest, fmt.Errorf(errText)
 			}
 		}
 	}

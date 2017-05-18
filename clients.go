@@ -76,7 +76,7 @@ func processDownload(w http.ResponseWriter, r *http.Request) {
 
 	targetfile, err := getTargetFile(dir, r.FormValue("v"))
 	if err != nil {
-		errorHandler(w, err.Error(), http.StatusBadGateway)
+		errorHandler(w, err.Error(), http.StatusBadRequest)
 	}
 
 	if targetfile != "" {
@@ -91,7 +91,7 @@ func processDownload(w http.ResponseWriter, r *http.Request) {
 		if mux.Vars(r)["type"] == "metadata" {
 			data, err := ioutil.ReadFile(targetfile)
 			if err != nil {
-				errorHandler(w, "Failed to read client file: %s"+err.Error(), http.StatusBadGateway)
+				errorHandler(w, "Failed to read client file: %s"+err.Error(), http.StatusBadRequest)
 			}
 
 			targetmd5 := md5.Sum(data)
