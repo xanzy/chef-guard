@@ -296,12 +296,13 @@ func (cg *ChefGuard) getCookbookChangeDetails(r *http.Request) []byte {
 	}
 
 	details := fmt.Sprintf(
-		"{\"name\":\"%s\",\"version\":\"%s\",\"frozen\":%t,\"forcedupload\":%t,\"source\":\"%s\"}",
+		"{\"name\":\"%s\",\"version\":\"%s\",\"frozen\":%t,\"forcedupload\":%t,\"source\":\"%s\", \"uploaded\": \"%s\"}",
 		v["name"],
 		v["version"],
 		frozen,
 		cg.ForcedUpload,
 		source,
+		time.Now().Format("2006-01-02 15:04:05"),
 	)
 
 	return []byte(details)
