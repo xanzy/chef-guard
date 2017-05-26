@@ -1,9 +1,14 @@
 Chef-Guard CHANGELOG
 ====================
 
-0.7.1 (UNRELEASED)
+0.7.1
 ------------------
 - Make sure the private token is not exposed
+- Fix a Gitlab bug and add additional Gitlab support
+- Extend Ruby stack size while running Foodcritic
+- Add vendoring of dependencies
+- Fix 2 file descriptor leaks
+- Change a bunch of HTTP exception codes from 502 to 400
 
 0.7.0
 -----
@@ -13,7 +18,7 @@ Chef-Guard CHANGELOG
 
 0.6.2
 -----
-- Do not log empty error messages but instead try to capture a more useful message based on the given error 
+- Do not log empty error messages but instead try to capture a more useful message based on the given error
 - Add a shared `insecureTransport` transport that can be used by all connections, instead of creating seperate ones for each connection
 - Fix a bug that could cause a nil pointer exception when the Git diff was too large to include the patch in the commit details
 - Replaced the multisyncer package with an updated version hosted outside the Chef-Guard repo

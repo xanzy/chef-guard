@@ -71,7 +71,7 @@ func unmarshalConstraints(body []byte) (*Constraints, error) {
 func (cg *ChefGuard) checkCookbookFrozen() (int, error) {
 	frozen, err := cg.cookbookFrozen(cg.Cookbook.Name, cg.Cookbook.Version)
 	if err != nil {
-		return http.StatusBadGateway, err
+		return http.StatusBadRequest, err
 	}
 	if frozen {
 		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Cookbook Upload error found ===\n" +
@@ -140,7 +140,7 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 func (cg *ChefGuard) validateConstraints(body []byte) (int, error) {
 	c, err := unmarshalConstraints(body)
 	if err != nil {
-		return http.StatusBadGateway, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
+		return http.StatusBadRequest, fmt.Errorf("Failed to unmarshal body %s: %s", string(body), err)
 	}
 
 	devEnv := getEffectiveConfig("DevEnvironment", cg.ChefOrg).(string)
@@ -192,7 +192,7 @@ func (cg *ChefGuard) checkDependencies(constraints map[string][]string, validate
 			}
 			frozen, err := cg.cookbookFrozen(name, version)
 			if err != nil {
-				return http.StatusBadGateway, err
+				return http.StatusBadRequest, err
 			}
 			if !frozen {
 				errors = append(errors, fmt.Sprintf("%s version %s needs to be frozen", name, version))
@@ -219,7 +219,7 @@ func (cg *ChefGuard) cookbookFrozen(name, version string) (bool, error) {
 func (cg *ChefGuard) compareCookbooks() (int, error) {
 	sh, err := cg.getSourceFileHashes()
 	if err != nil {
-		return http.StatusBadGateway, err
+		return http.StatusBadRequest, err
 	}
 	changed := []string{}
 	missing := []string{}
@@ -237,7 +237,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 		} else {
 			ignore, err := cg.ignoreThisFile(file, true)
 			if err != nil {
-				return http.StatusBadGateway, err
+				return http.StatusBadRequest, err
 			}
 			if !ignore {
 				missing = append(missing, file)
@@ -258,7 +258,7 @@ func (cg *ChefGuard) compareCookbooks() (int, error) {
 		for file := range sh {
 			ignore, err := cg.ignoreThisFile(file, true)
 			if err != nil {
-				return http.StatusBadGateway, err
+				return http.StatusBadRequest, err
 			}
 			if !ignore {
 				missing = append(missing, file)
@@ -388,7 +388,7 @@ func searchCommunityCookbooks(name, version string) (*SourceCookbook, int, error
 		if cfg.Community.Forks != "" {
 			sc, err = searchGit(strings.Split(cfg.Community.Forks, ","), name, version, true)
 			if err != nil {
-				return nil, http.StatusBadGateway, err
+				return nil, http.StatusBadRequest, err
 			}
 			if sc != nil {
 				// Do additional tests to check for a PR!
@@ -432,7 +432,7 @@ func searchPrivateCookbooks(chefOrg, name, version string) (*SourceCookbook, int
 		}
 		sc, err := searchGit(strings.Split(gitConfigs, ","), name, version, false)
 		if err != nil {
-			return nil, http.StatusBadGateway, err
+			return nil, http.StatusBadRequest, err
 		}
 		if sc != nil {
 			sc.private = true
@@ -445,27 +445,27 @@ func searchPrivateCookbooks(chefOrg, name, version string) (*SourceCookbook, int
 func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int, error) {
 	u, err := url.Parse(fmt.Sprintf("%s/%s", supermarket, "universe"))
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf(
+		return nil, http.StatusBadRequest, fmt.Errorf(
 			"Failed to parse the community cookbooks URL %s: %s", supermarket, err)
 	}
 	resp, err := http.Get(u.String())
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf(
+		return nil, http.StatusBadRequest, fmt.Errorf(
 			"Failed to get cookbook list from %s: %s", u.String(), err)
 	}
 	defer resp.Body.Close()
 	if err := checkHTTPResponse(resp, []int{http.StatusOK}); err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf(
+		return nil, http.StatusBadRequest, fmt.Errorf(
 			"Failed to get cookbook list from %s: %s", u.String(), err)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf(
+		return nil, http.StatusBadRequest, fmt.Errorf(
 			"Failed to read the response body from %v: %s", resp, err)
 	}
 	results := make(map[string]map[string]*SourceCookbook)
 	if err := json.Unmarshal(body, &results); err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf(
+		return nil, http.StatusBadRequest, fmt.Errorf(
 			"Failed to unmarshal body %s: %s", string(body), err)
 	}
 	if cb, exists := results[name]; exists {
@@ -473,7 +473,7 @@ func searchSupermarket(supermarket, name, version string) (*SourceCookbook, int,
 			sc.artifact = true
 			u, err := communityDownloadURL(sc.LocationPath, name, version)
 			if err != nil {
-				return nil, http.StatusBadGateway, err
+				return nil, http.StatusBadRequest, err
 			}
 			sc.DownloadURL = u
 			sc.sourceURL = strings.Split(u.String(), "&")[0]

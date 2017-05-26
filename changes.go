@@ -53,14 +53,14 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 		cg, err := newChefGuard(r)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
-				"Failed to create a new ChefGuard structure: %s", err), http.StatusBadGateway)
+				"Failed to create a new ChefGuard structure: %s", err), http.StatusInternalServerError)
 			return
 		}
 
 		reqBody, err := dumpBody(r)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
-				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
+				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadRequest)
 			return
 		}
 
@@ -94,14 +94,14 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 
 		r.URL, err = url.Parse(u)
 		if err != nil {
-			errorHandler(w, fmt.Sprintf("Failed to parse URL %s: %s", u, err), http.StatusBadGateway)
+			errorHandler(w, fmt.Sprintf("Failed to parse URL %s: %s", u, err), http.StatusBadRequest)
 			return
 		}
 
 		resp, err := http.DefaultTransport.RoundTrip(r)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
-				"Call to %s failed: %s", r.URL.String(), err), http.StatusBadGateway)
+				"Call to %s failed: %s", r.URL.String(), err), http.StatusBadRequest)
 			return
 		}
 		defer resp.Body.Close()
@@ -118,14 +118,14 @@ func processChange(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Req
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
-				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadGateway)
+				"Failed to get body from call to %s: %s", r.URL.String(), err), http.StatusBadRequest)
 			return
 		}
 
 		cg.ChangeDetails, err = getChangeDetails(r, reqBody)
 		if err != nil {
 			errorHandler(w, fmt.Sprintf(
-				"Failed to parse variables from %s: %s", r.URL.String(), err), http.StatusBadGateway)
+				"Failed to parse variables from %s: %s", r.URL.String(), err), http.StatusBadRequest)
 			return
 		}
 
