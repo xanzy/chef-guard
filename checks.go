@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 func (cg *ChefGuard) executeChecks() (int, error) {
@@ -59,12 +60,21 @@ func runFoodcritic(org, cookbookPath string) (int, error) {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.Sys().(syscall.WaitStatus).ExitStatus() == 3 {
+				errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
+				return http.StatusPreconditionFailed, fmt.Errorf("\n=== Foodcritic errors found ===\n%s\n===============================\n", errText)
+			}
+		}
 		return http.StatusInternalServerError, fmt.Errorf("Failed to execute foodcritic tests: %s - %s", output, err)
 	}
+
+	// This is still needed for Foodcritic > v9.x.x
 	if strings.TrimSpace(string(output)) != "" {
 		errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
 		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Foodcritic errors found ===\n%s\n===============================\n", errText)
 	}
+
 	return 0, nil
 }
 

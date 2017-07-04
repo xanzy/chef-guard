@@ -1,6 +1,10 @@
 ## VARIABLES
 VERSION=`cat VERSION`
 
+dev:
+	@mkdir -p bin/x64
+	@GOOS=linux GOARCH=amd64 go build -o bin/x64/chef-guard
+
 release:
 	@mkdir -p bin/x86
 	@GOOS=linux GOARCH=386 go build -o bin/x86/chef-guard

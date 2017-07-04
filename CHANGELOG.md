@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.7.2 (UNRELEASED)
+------------------
+- Add support for Foodcritic > v9.x.x
+
 0.7.1
 ------------------
 - Make sure the private token is not exposed
