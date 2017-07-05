@@ -66,7 +66,8 @@ func runFoodcritic(org, cookbookPath string) (int, error) {
 				return http.StatusPreconditionFailed, fmt.Errorf("\n=== Foodcritic errors found ===\n%s\n===============================\n", errText)
 			}
 		}
-		return http.StatusInternalServerError, fmt.Errorf("Failed to execute foodcritic tests: %s - %s", output, err)
+
+		return http.StatusInternalServerError, fmt.Errorf("Failed to execute \"foodcritic %s\": %s - %s", strings.Join(cmd.Args, " "), output, err)
 	}
 
 	// This is still needed for Foodcritic > v9.x.x
@@ -84,15 +85,14 @@ func getFoodcriticArgs(org, cookbookPath string) []string {
 	if excludes != custExcludes {
 		excludes = fmt.Sprintf("%s,%s", excludes, custExcludes)
 	}
-	excls := strings.Split(excludes, ",")
 	args := []string{}
-	for _, excl := range excls {
-		args = append(args, fmt.Sprintf("-t ~%s", strings.TrimSpace(excl)))
+	if excludes != "" {
+		args = append(args, "--tags", "~"+strings.Replace(excludes, ",", ",~", -1))
 	}
 	if cfg.Default.IncludeFCs != "" {
-		args = append(args, "-I", cfg.Default.IncludeFCs)
+		args = append(args, "--include", cfg.Default.IncludeFCs)
 	}
-	return append(args, "-B", cookbookPath)
+	return append(args, "--no-progress", "--cookbook-path", cookbookPath)
 }
 
 func runRubocop(cookbookPath string) (int, error) {
@@ -104,7 +104,7 @@ func runRubocop(cookbookPath string) (int, error) {
 			errText := strings.TrimSpace(strings.Replace(string(output), fmt.Sprintf("%s/", cookbookPath), "", -1))
 			return http.StatusPreconditionFailed, fmt.Errorf("\n=== Rubocop errors found ===\n%s\n============================\n", errText)
 		}
-		return http.StatusInternalServerError, fmt.Errorf("Failed to execute rubocop tests: %s - %s", output, err)
+		return http.StatusInternalServerError, fmt.Errorf("Failed to execute \"rubocop %s\": %s - %s", cookbookPath, output, err)
 	}
 	return 0, nil
 }
