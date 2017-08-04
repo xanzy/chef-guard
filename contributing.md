@@ -7,6 +7,8 @@ Just as a heads up, building the project is actually as easy as running `go buil
 
 I cannot make it any easier that just using this one command: `go build` in the source directory :) For more information and details you should really checkout the Chef-Guard [project page](http://xanzy.io/projects/chef-guard) at [Xanzy](http://xanzy.io) which contains just about all the info you need to get started...
 
+Chef-Guard requires at least Go 1.8 to build and uses [govendor](https://github.com/kardianos/govendor) for managing dependencies.
+
 ## Contributing
 
   1. Fork the repository on Github

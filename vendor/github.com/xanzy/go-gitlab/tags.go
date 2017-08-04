@@ -24,14 +24,16 @@ import (
 // TagsService handles communication with the tags related methods
 // of the GitLab API.
 //
-// GitLab API docs: http://doc.gitlab.com/ce/api/tags.html
+// GitLab API docs:
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/tags.md
 type TagsService struct {
 	client *Client
 }
 
 // Tag represents a GitLab tag.
 //
-// GitLab API docs: http://doc.gitlab.com/ce/api/tags.html
+// GitLab API docs:
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/tags.md
 type Tag struct {
 	Commit  *Commit `json:"commit"`
 	Name    string  `json:"name"`
@@ -46,15 +48,15 @@ func (r Tag) String() string {
 // alphabetical order.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#list-project-repository-tags
-func (s *TagsService) ListTags(pid interface{}) ([]*Tag, *Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/tags.md#list-project-repository-tags
+func (s *TagsService) ListTags(pid interface{}, options ...OptionFunc) ([]*Tag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/tags", url.QueryEscape(project))
 
-	req, err := s.client.NewRequest("GET", u, nil)
+	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,10 +70,36 @@ func (s *TagsService) ListTags(pid interface{}) ([]*Tag, *Response, error) {
 	return t, resp, err
 }
 
+// GetTag a specific repository tag determined by its name. It returns 200 together
+// with the tag information if the tag exists. It returns 404 if the tag does not exist.
+//
+// GitLab API docs:
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/tags.md#get-a-single-repository-tag
+func (s *TagsService) GetTag(pid interface{}, tag string, options ...OptionFunc) (*Tag, *Response, error) {
+	project, err := parseID(pid)
+	if err != nil {
+		return nil, nil, err
+	}
+	u := fmt.Sprintf("projects/%s/repository/tags/%s", url.QueryEscape(project), tag)
+
+	req, err := s.client.NewRequest("GET", u, nil, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var t *Tag
+	resp, err := s.client.Do(req, &t)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return t, resp, err
+}
+
 // CreateTagOptions represents the available CreateTag() options.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/tags.html#create-a-new-tag
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/tags.md#create-a-new-tag
 type CreateTagOptions struct {
 	TagName *string `url:"tag_name,omitempty" json:"tag_name,omitempty"`
 	Ref     *string `url:"ref,omitempty" json:"ref,omitempty"`
@@ -81,15 +109,15 @@ type CreateTagOptions struct {
 // CreateTag creates a new tag in the repository that points to the supplied ref.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#create-a-new-tag
-func (s *TagsService) CreateTag(pid interface{}, opt *CreateTagOptions) (*Tag, *Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/tags.md#create-a-new-tag
+func (s *TagsService) CreateTag(pid interface{}, opt *CreateTagOptions, options ...OptionFunc) (*Tag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/tags", url.QueryEscape(project))
 
-	req, err := s.client.NewRequest("POST", u, opt)
+	req, err := s.client.NewRequest("POST", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -106,15 +134,15 @@ func (s *TagsService) CreateTag(pid interface{}, opt *CreateTagOptions) (*Tag, *
 // DeleteTag deletes a tag of a repository with given name.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/tags.html#delete-a-tag
-func (s *TagsService) DeleteTag(pid interface{}, tag string) (*Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/tags.md#delete-a-tag
+func (s *TagsService) DeleteTag(pid interface{}, tag string, options ...OptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/tags/%s", url.QueryEscape(project), tag)
 
-	req, err := s.client.NewRequest("DELETE", u, nil)
+	req, err := s.client.NewRequest("DELETE", u, nil, options)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -33,7 +34,7 @@ const (
 
 // GetContent implements the Git interface
 func (g *GitHub) GetContent(repo, path string) (*File, interface{}, error) {
-	file, dir, resp, err := g.client.Repositories.GetContents(g.org, repo, path, nil)
+	file, dir, resp, err := g.client.Repositories.GetContents(context.TODO(), g.org, repo, path, nil)
 	if err != nil {
 		if resp != nil {
 			switch resp.StatusCode {
@@ -50,13 +51,13 @@ func (g *GitHub) GetContent(repo, path string) (*File, interface{}, error) {
 		return nil, dir, nil
 	}
 
-	conf, err := file.Decode()
+	conf, err := file.GetContent()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error decoding file %s: %v", path, err)
 	}
 
 	f := &File{
-		Content: string(conf),
+		Content: conf,
 		SHA:     *file.SHA,
 	}
 
@@ -70,7 +71,7 @@ func (g *GitHub) CreateFile(repo, path, msg string, usr *User, content []byte) (
 	opts.Content = content
 	opts.Message = &msg
 
-	r, resp, err := g.client.Repositories.CreateFile(g.org, repo, path, opts)
+	r, resp, err := g.client.Repositories.CreateFile(context.TODO(), g.org, repo, path, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitHubToken, g.org)
@@ -89,7 +90,7 @@ func (g *GitHub) UpdateFile(repo, path, sha, msg string, usr *User, content []by
 	opts.Message = &msg
 	opts.SHA = &sha
 
-	r, resp, err := g.client.Repositories.UpdateFile(g.org, repo, path, opts)
+	r, resp, err := g.client.Repositories.UpdateFile(context.TODO(), g.org, repo, path, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitHubToken, g.org)
@@ -107,7 +108,7 @@ func (g *GitHub) DeleteFile(repo, path, sha, msg string, usr *User) (string, err
 	opts.Message = &msg
 	opts.SHA = &sha
 
-	r, resp, err := g.client.Repositories.DeleteFile(g.org, repo, path, opts)
+	r, resp, err := g.client.Repositories.DeleteFile(context.TODO(), g.org, repo, path, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitHubToken, g.org)
@@ -131,7 +132,7 @@ func (g *GitHub) DeleteDirectory(repo, msg string, dir interface{}, usr *User) e
 		opts.Message = &msg
 		opts.SHA = file.SHA
 
-		_, resp, err := g.client.Repositories.DeleteFile(g.org, repo, *file.Path, opts)
+		_, resp, err := g.client.Repositories.DeleteFile(context.TODO(), g.org, repo, *file.Path, opts)
 		if err != nil {
 			if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 				return fmt.Errorf(invalidGitHubToken, g.org)
@@ -154,7 +155,7 @@ func (g *GitHub) GetDiff(repo, user, sha string) (string, error) {
 	req.Header.Set("Accept", "application/vnd.github.V3.diff")
 
 	var diff bytes.Buffer
-	resp, err := g.client.Do(req, &diff)
+	resp, err := g.client.Do(context.TODO(), req, &diff)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitHubToken, g.org)
@@ -181,7 +182,7 @@ func (g *GitHub) GetDiff(repo, user, sha string) (string, error) {
 
 // GetArchiveLink implements the Git interface
 func (g *GitHub) GetArchiveLink(repo, tag string) (*url.URL, error) {
-	link, resp, err := g.client.Repositories.GetArchiveLink(
+	link, resp, err := g.client.Repositories.GetArchiveLink(context.TODO(),
 		g.org, repo, github.Tarball, &github.RepositoryContentGetOptions{Ref: tag})
 	if err != nil {
 		if resp != nil {
@@ -200,7 +201,7 @@ func (g *GitHub) GetArchiveLink(repo, tag string) (*url.URL, error) {
 
 // TagRepo implements the Git interface
 func (g *GitHub) TagRepo(repo, tag string, usr *User) error {
-	master, resp, err := g.client.Git.GetRef(g.org, repo, "heads/master")
+	master, resp, err := g.client.Git.GetRef(context.TODO(), g.org, repo, "heads/master")
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return fmt.Errorf(invalidGitHubToken, g.org)
@@ -212,7 +213,7 @@ func (g *GitHub) TagRepo(repo, tag string, usr *User) error {
 	ghTag := &github.Tag{Tag: &tag, Message: &message, Object: master.Object}
 	ghTag.Tagger = &github.CommitAuthor{Name: &usr.Name, Email: &usr.Mail}
 
-	tagObject, resp, err := g.client.Git.CreateTag(g.org, repo, ghTag)
+	tagObject, resp, err := g.client.Git.CreateTag(context.TODO(), g.org, repo, ghTag)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return fmt.Errorf(invalidGitHubToken, g.org)
@@ -226,7 +227,7 @@ func (g *GitHub) TagRepo(repo, tag string, usr *User) error {
 		URL:    tagObject.URL,
 		Object: &github.GitObject{SHA: tagObject.SHA},
 	}
-	if _, _, err = g.client.Git.CreateRef(g.org, repo, ref); err != nil {
+	if _, _, err = g.client.Git.CreateRef(context.TODO(), g.org, repo, ref); err != nil {
 		return fmt.Errorf("Error creating tag for repo %s: %v", repo, err)
 	}
 
@@ -237,7 +238,7 @@ func (g *GitHub) TagRepo(repo, tag string, usr *User) error {
 func (g *GitHub) TagExists(repo, tag string) (bool, error) {
 	ref := fmt.Sprintf("tags/%s", tag)
 
-	_, resp, err := g.client.Git.GetRef(g.org, repo, ref)
+	_, resp, err := g.client.Git.GetRef(context.TODO(), g.org, repo, ref)
 	if err != nil {
 		if resp != nil {
 			switch resp.StatusCode {
@@ -257,7 +258,7 @@ func (g *GitHub) TagExists(repo, tag string) (bool, error) {
 func (g *GitHub) UntagRepo(repo, tag string) error {
 	ref := fmt.Sprintf("tags/%s", tag)
 
-	resp, err := g.client.Git.DeleteRef(g.org, repo, ref)
+	resp, err := g.client.Git.DeleteRef(context.TODO(), g.org, repo, ref)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return fmt.Errorf(invalidGitHubToken, g.org)

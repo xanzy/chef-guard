@@ -25,18 +25,21 @@ import (
 // RepositoriesService handles communication with the repositories related
 // methods of the GitLab API.
 //
-// GitLab API docs: http://doc.gitlab.com/ce/api/repositories.html
+// GitLab API docs:
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md
 type RepositoriesService struct {
 	client *Client
 }
 
 // TreeNode represents a GitLab repository file or directory.
 //
-// GitLab API docs: http://doc.gitlab.com/ce/api/repositories.html
+// GitLab API docs:
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md
 type TreeNode struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+	Path string `json:"path"`
 	Mode string `json:"mode"`
 }
 
@@ -47,26 +50,25 @@ func (t TreeNode) String() string {
 // ListTreeOptions represents the available ListTree() options.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#list-repository-tree
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#list-repository-tree
 type ListTreeOptions struct {
-	Path    *string `url:"path,omitempty" json:"path,omitempty"`
-	RefName *string `url:"ref_name,omitempty" json:"ref_name,omitempty"`
+	Path      *string `url:"path,omitempty" json:"path,omitempty"`
+	RefName   *string `url:"ref_name,omitempty" json:"ref_name,omitempty"`
+	Recursive *bool   `url:"recursive,omitempty" json:"recursive,omitempty"`
 }
 
 // ListTree gets a list of repository files and directories in a project.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#list-repository-tree
-func (s *RepositoriesService) ListTree(
-	pid interface{},
-	opt *ListTreeOptions) ([]*TreeNode, *Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#list-repository-tree
+func (s *RepositoriesService) ListTree(pid interface{}, opt *ListTreeOptions, options ...OptionFunc) ([]*TreeNode, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/tree", url.QueryEscape(project))
 
-	req, err := s.client.NewRequest("GET", u, opt)
+	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,7 +85,7 @@ func (s *RepositoriesService) ListTree(
 // RawFileContentOptions represents the available RawFileContent() options.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#raw-file-content
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#raw-file-content
 type RawFileContentOptions struct {
 	FilePath *string `url:"filepath,omitempty" json:"filepath,omitempty"`
 }
@@ -91,18 +93,15 @@ type RawFileContentOptions struct {
 // RawFileContent gets the raw file contents for a file by commit SHA and path
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#raw-file-content
-func (s *RepositoriesService) RawFileContent(
-	pid interface{},
-	sha string,
-	opt *RawFileContentOptions) ([]byte, *Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#raw-file-content
+func (s *RepositoriesService) RawFileContent(pid interface{}, sha string, opt *RawFileContentOptions, options ...OptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/blobs/%s", url.QueryEscape(project), sha)
 
-	req, err := s.client.NewRequest("GET", u, opt)
+	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -119,17 +118,15 @@ func (s *RepositoriesService) RawFileContent(
 // RawBlobContent gets the raw file contents for a blob by blob SHA.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#raw-blob-content
-func (s *RepositoriesService) RawBlobContent(
-	pid interface{},
-	sha string) ([]byte, *Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#raw-blob-content
+func (s *RepositoriesService) RawBlobContent(pid interface{}, sha string, options ...OptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/raw_blobs/%s", url.QueryEscape(project), sha)
 
-	req, err := s.client.NewRequest("GET", u, nil)
+	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -146,7 +143,7 @@ func (s *RepositoriesService) RawBlobContent(
 // ArchiveOptions represents the available Archive() options.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#get-file-archive
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#get-file-archive
 type ArchiveOptions struct {
 	SHA *string `url:"sha,omitempty" json:"sha,omitempty"`
 }
@@ -154,17 +151,15 @@ type ArchiveOptions struct {
 // Archive gets an archive of the repository.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#get-file-archive
-func (s *RepositoriesService) Archive(
-	pid interface{},
-	opt *ArchiveOptions) ([]byte, *Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#get-file-archive
+func (s *RepositoriesService) Archive(pid interface{}, opt *ArchiveOptions, options ...OptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/archive", url.QueryEscape(project))
 
-	req, err := s.client.NewRequest("GET", u, opt)
+	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -181,7 +176,7 @@ func (s *RepositoriesService) Archive(
 // Compare represents the result of a comparison of branches, tags or commits.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#compare-branches-tags-or-commits
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#compare-branches-tags-or-commits
 type Compare struct {
 	Commit         *Commit   `json:"commit"`
 	Commits        []*Commit `json:"commits"`
@@ -197,7 +192,7 @@ func (c Compare) String() string {
 // CompareOptions represents the available Compare() options.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#compare-branches-tags-or-commits
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#compare-branches-tags-or-commits
 type CompareOptions struct {
 	From *string `url:"from,omitempty" json:"from,omitempty"`
 	To   *string `url:"to,omitempty" json:"to,omitempty"`
@@ -206,17 +201,15 @@ type CompareOptions struct {
 // Compare compares branches, tags or commits.
 //
 // GitLab API docs:
-// http://doc.gitlab.com/ce/api/repositories.html#compare-branches-tags-or-commits
-func (s *RepositoriesService) Compare(
-	pid interface{},
-	opt *CompareOptions) (*Compare, *Response, error) {
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#compare-branches-tags-or-commits
+func (s *RepositoriesService) Compare(pid interface{}, opt *CompareOptions, options ...OptionFunc) (*Compare, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/compare", url.QueryEscape(project))
 
-	req, err := s.client.NewRequest("GET", u, opt)
+	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -232,7 +225,8 @@ func (s *RepositoriesService) Compare(
 
 // Contributor represents a GitLap contributor.
 //
-// GitLab API docs: http://doc.gitlab.com/ce/api/repositories.html#contributer
+// GitLab API docs:
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#contributer
 type Contributor struct {
 	Name      string `json:"name,omitempty"`
 	Email     string `json:"email,omitempty"`
@@ -247,15 +241,16 @@ func (c Contributor) String() string {
 
 // Contributors gets the repository contributors list.
 //
-// GitLab API docs: http://doc.gitlab.com/ce/api/repositories.html#contributer
-func (s *RepositoriesService) Contributors(pid interface{}) ([]*Contributor, *Response, error) {
+// GitLab API docs:
+// https://gitlab.com/gitlab-org/gitlab-ce/blob/8-16-stable/doc/api/repositories.md#contributer
+func (s *RepositoriesService) Contributors(pid interface{}, options ...OptionFunc) ([]*Contributor, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("projects/%s/repository/contributors", url.QueryEscape(project))
 
-	req, err := s.client.NewRequest("GET", u, nil)
+	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -196,7 +196,7 @@ func (g *GitLab) DeleteDirectory(project, msg string, dir interface{}, usr *User
 func (g *GitLab) GetDiff(project, user, sha string) (string, error) {
 	u := fmt.Sprintf("/%s/%s/commit/%s.diff", g.group, project, sha)
 
-	req, err := g.client.NewRequest("GET", u, nil)
+	req, err := g.client.NewRequest("GET", u, nil, nil)
 	if err != nil {
 		return "", err
 	}
