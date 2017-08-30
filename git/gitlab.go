@@ -63,10 +63,9 @@ func (g *GitLab) GetContent(project, path string) (*File, interface{}, error) {
 	}
 
 	fileOpts := &gitlab.GetFileOptions{
-		FilePath: gitlab.String(path),
-		Ref:      gitlab.String("master"),
+		Ref: gitlab.String("master"),
 	}
-	file, resp, err := g.client.RepositoryFiles.GetFile(ns, fileOpts)
+	file, resp, err := g.client.RepositoryFiles.GetFile(ns, path, fileOpts)
 	if err != nil {
 		if resp != nil {
 			switch resp.StatusCode {
@@ -101,14 +100,13 @@ func (g *GitLab) CreateFile(project, path, msg string, usr *User, content []byte
 	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	opts := &gitlab.CreateFileOptions{
-		FilePath:      gitlab.String(path),
-		BranchName:    gitlab.String("master"),
+		Branch:        gitlab.String("master"),
 		AuthorEmail:   &usr.Mail,
 		AuthorName:    &usr.Name,
 		Content:       gitlab.String(string(content)),
 		CommitMessage: gitlab.String(msg),
 	}
-	_, resp, err := g.client.RepositoryFiles.CreateFile(ns, opts)
+	_, resp, err := g.client.RepositoryFiles.CreateFile(ns, path, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, g.group)
@@ -124,14 +122,13 @@ func (g *GitLab) UpdateFile(project, path, sha, msg string, usr *User, content [
 	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	opts := &gitlab.UpdateFileOptions{
-		FilePath:      gitlab.String(path),
-		BranchName:    gitlab.String("master"),
+		Branch:        gitlab.String("master"),
 		AuthorEmail:   &usr.Mail,
 		AuthorName:    &usr.Name,
 		Content:       gitlab.String(string(content)),
 		CommitMessage: gitlab.String(msg),
 	}
-	_, resp, err := g.client.RepositoryFiles.UpdateFile(ns, opts)
+	_, resp, err := g.client.RepositoryFiles.UpdateFile(ns, path, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, g.group)
@@ -147,13 +144,12 @@ func (g *GitLab) DeleteFile(project, path, sha, msg string, usr *User) (string, 
 	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	opts := &gitlab.DeleteFileOptions{
-		FilePath:      gitlab.String(path),
-		BranchName:    gitlab.String("master"),
+		Branch:        gitlab.String("master"),
 		AuthorEmail:   &usr.Mail,
 		AuthorName:    &usr.Name,
 		CommitMessage: gitlab.String(msg),
 	}
-	_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
+	resp, err := g.client.RepositoryFiles.DeleteFile(ns, path, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf(invalidGitLabToken, g.group)
@@ -174,13 +170,12 @@ func (g *GitLab) DeleteDirectory(project, msg string, dir interface{}, usr *User
 		msg := fmt.Sprintf(msg, strings.TrimSuffix(fn, ".json"))
 
 		opts := &gitlab.DeleteFileOptions{
-			FilePath:      gitlab.String(file),
-			BranchName:    gitlab.String("master"),
+			Branch:        gitlab.String("master"),
 			AuthorEmail:   &usr.Mail,
 			AuthorName:    &usr.Name,
 			CommitMessage: gitlab.String(msg),
 		}
-		_, resp, err := g.client.RepositoryFiles.DeleteFile(ns, opts)
+		resp, err := g.client.RepositoryFiles.DeleteFile(ns, file, opts)
 		if err != nil {
 			if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 				return fmt.Errorf(invalidGitLabToken, g.group)
