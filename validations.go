@@ -124,7 +124,8 @@ func (cg *ChefGuard) validateCookbookStatus() (int, error) {
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
 					"%s\n\nSource: %s\n\n"+
 					"Make sure all your changes are merged into the central\n"+
-					"repositories before trying to upload the cookbook again.\n"+
+					"repositories before trying to upload the cookbook again.\n\n"+
+					"HINT: Also double check your line endings (CRLF vs LF)!\n"+
 					"=====================================\n", err, strings.Split(cg.SourceCookbook.DownloadURL.String(), "&")[0])
 			default:
 				err = fmt.Errorf("\n=== Cookbook Compare errors found ===\n"+
@@ -364,9 +365,6 @@ func (cg *ChefGuard) getSourceFileHashes() (map[string][16]byte, error) {
 			if file == "chefignore" {
 				cg.ChefIgnoreFile = content
 			}
-
-			// Make sure we only have unix style line endings
-			content = []byte(strings.Replace(string(content), "\r\n", "\n", -1))
 
 			files[file] = md5.Sum(content)
 		}
