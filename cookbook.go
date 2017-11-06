@@ -149,9 +149,6 @@ func (cg *ChefGuard) processCookbookFiles() error {
 			return fmt.Errorf("Failed to dowload %s from the %s cookbook: %s", f.Path, cg.Cookbook.Name, err)
 		}
 
-		// Make sure we only have unix style line endings
-		content = []byte(strings.Replace(string(content), "\r\n", "\n", -1))
-
 		if err := writeFileToDisk(path.Join(cg.CookbookPath, f.Path), strings.NewReader(string(content))); err != nil {
 			return fmt.Errorf("Failed to write file %s to disk: %s", path.Join(cg.CookbookPath, f.Path), err)
 		}
