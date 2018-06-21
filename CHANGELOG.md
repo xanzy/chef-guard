@@ -1,7 +1,7 @@
 Chef-Guard CHANGELOG
 ====================
 
-0.7.2 (UNRELEASED)
+0.7.2
 ------------------
 - Add support for Foodcritic > v9.x.x
 - Update dependencies order to fix issues resulting from [RFC 85](https://github.com/chef/chef/commit/dc96b2f45b8d8a0c6335c879551d8c1e94e9559c)
