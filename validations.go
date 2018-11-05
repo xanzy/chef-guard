@@ -74,7 +74,7 @@ func (cg *ChefGuard) checkCookbookFrozen() (int, error) {
 		return http.StatusBadRequest, err
 	}
 	if frozen {
-		return http.StatusPreconditionFailed, fmt.Errorf("\n=== Cookbook Upload error found ===\n" +
+		return http.StatusConflict, fmt.Errorf("\n=== Cookbook Upload error found ===\n" +
 			"The cookbook you are trying to upload is frozen!\n" +
 			"It is not allowed to overwrite a frozen cookbook,\n" +
 			"so please bump the version and try again.\n" +
