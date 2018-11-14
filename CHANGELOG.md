@@ -1,11 +1,17 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.7.3
+------------------
+- Switch to using Go modules, but still vendor (`go mod vendor`) for backwards compatibility
+- Update `go-gitlab` to properly support the Gitlab V4 API
+- Fix a compatibility problem with Berkshelf > 7.x (GH-127)
+
 0.7.2
 ------------------
 - Add support for Foodcritic > v9.x.x
 - Update dependencies order to fix issues resulting from [RFC 85](https://github.com/chef/chef/commit/dc96b2f45b8d8a0c6335c879551d8c1e94e9559c)
-- Update go-gitlab dependency to start using the Gitlab V4 API and so stop using the deprecated V3 API
+- Update `go-gitlab` dependency to start using the Gitlab V4 API and so stop using the deprecated V3 API
 - Do not search and replace CRLF with LF line endings (GH-125)
 
 0.7.1

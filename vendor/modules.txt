@@ -1,0 +1,43 @@
+# github.com/golang/protobuf v1.2.0
+github.com/golang/protobuf/proto
+# github.com/google/go-github v17.0.0+incompatible
+github.com/google/go-github/github
+# github.com/google/go-querystring v1.0.0
+github.com/google/go-querystring/query
+# github.com/gorilla/context v1.1.1
+github.com/gorilla/context
+# github.com/gorilla/mux v1.6.2
+github.com/gorilla/mux
+# github.com/icub3d/graceful v0.0.0-20150426161802-c35c02575508
+github.com/icub3d/graceful
+# github.com/marpaia/chef-golang v0.1.1-0.20170804021637-5237b77e9f54
+github.com/marpaia/chef-golang
+# github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f
+github.com/mitchellh/osext
+# github.com/xanzy/go-gitlab v0.11.6
+github.com/xanzy/go-gitlab
+# github.com/xanzy/go-pathspec v1.0.1
+github.com/xanzy/go-pathspec
+# github.com/xanzy/multisyncer v0.0.0-20151209090734-170d66c6ef90
+github.com/xanzy/multisyncer
+# golang.org/x/net v0.0.0-20181108082009-03003ca0c849
+golang.org/x/net/context/ctxhttp
+golang.org/x/net/context
+# golang.org/x/oauth2 v0.0.0-20181106182150-f42d05182288
+golang.org/x/oauth2
+golang.org/x/oauth2/internal
+# google.golang.org/appengine v1.3.0
+google.golang.org/appengine/urlfetch
+google.golang.org/appengine/internal
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/internal/base
+google.golang.org/appengine/internal/datastore
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/remote_api
+# gopkg.in/gcfg.v1 v1.2.3
+gopkg.in/gcfg.v1
+gopkg.in/gcfg.v1/scanner
+gopkg.in/gcfg.v1/token
+gopkg.in/gcfg.v1/types
+# gopkg.in/warnings.v0 v0.1.2
+gopkg.in/warnings.v0
