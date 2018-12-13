@@ -230,7 +230,7 @@ func (g *GitLab) GetDiff(project, user, sha string) (string, error) {
 
 // GetArchiveLink implements the Git interface
 func (g *GitLab) GetArchiveLink(project, tag string) (*url.URL, error) {
-	ns := fmt.Sprintf("%s%2F%s", g.group, project)
+	ns := fmt.Sprintf("%s/%s", g.group, project)
 
 	_, resp, err := g.client.Projects.GetProject(ns)
 	if err != nil {
@@ -247,7 +247,7 @@ func (g *GitLab) GetArchiveLink(project, tag string) (*url.URL, error) {
 
 	u, err := url.Parse(
 		fmt.Sprintf("/api/v4/projects/%s/repository/archive.tar.gz?ref=%s&private_token=%s",
-			ns,
+			url.QueryEscape(ns),
 			tag,
 			g.token,
 		),
