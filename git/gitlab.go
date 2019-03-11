@@ -246,8 +246,8 @@ func (g *GitLab) GetArchiveLink(project, tag string) (*url.URL, error) {
 	}
 
 	u, err := url.Parse(
-		fmt.Sprintf("/%s/repository/archive.tar.gz?ref=%s&private_token=%s",
-			ns,
+		fmt.Sprintf("projects/%s/repository/archive.tar.gz?sha=%s&private_token=%s",
+			url.QueryEscape(ns),
 			tag,
 			g.token,
 		),
