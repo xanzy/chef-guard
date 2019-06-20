@@ -2,7 +2,6 @@ package gitlab
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 )
 
@@ -33,9 +32,7 @@ type PipelineTrigger struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/pipeline_triggers.html#list-project-triggers
-type ListPipelineTriggersOptions struct {
-	ListOptions
-}
+type ListPipelineTriggersOptions ListOptions
 
 // ListPipelineTriggers gets a list of project triggers.
 //
@@ -46,7 +43,7 @@ func (s *PipelineTriggersService) ListPipelineTriggers(pid interface{}, opt *Lis
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/triggers", url.QueryEscape(project))
+	u := fmt.Sprintf("projects/%s/triggers", pathEscape(project))
 
 	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
@@ -71,7 +68,7 @@ func (s *PipelineTriggersService) GetPipelineTrigger(pid interface{}, trigger in
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/triggers/%d", url.QueryEscape(project), trigger)
+	u := fmt.Sprintf("projects/%s/triggers/%d", pathEscape(project), trigger)
 
 	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {
@@ -104,7 +101,7 @@ func (s *PipelineTriggersService) AddPipelineTrigger(pid interface{}, opt *AddPi
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/triggers", url.QueryEscape(project))
+	u := fmt.Sprintf("projects/%s/triggers", pathEscape(project))
 
 	req, err := s.client.NewRequest("POST", u, opt, options)
 	if err != nil {
@@ -137,7 +134,7 @@ func (s *PipelineTriggersService) EditPipelineTrigger(pid interface{}, trigger i
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/triggers/%d", url.QueryEscape(project), trigger)
+	u := fmt.Sprintf("projects/%s/triggers/%d", pathEscape(project), trigger)
 
 	req, err := s.client.NewRequest("PUT", u, opt, options)
 	if err != nil {
@@ -163,7 +160,7 @@ func (s *PipelineTriggersService) TakeOwnershipOfPipelineTrigger(pid interface{}
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/triggers/%d/take_ownership", url.QueryEscape(project), trigger)
+	u := fmt.Sprintf("projects/%s/triggers/%d/take_ownership", pathEscape(project), trigger)
 
 	req, err := s.client.NewRequest("POST", u, nil, options)
 	if err != nil {
@@ -188,7 +185,7 @@ func (s *PipelineTriggersService) DeletePipelineTrigger(pid interface{}, trigger
 	if err != nil {
 		return nil, err
 	}
-	u := fmt.Sprintf("projects/%s/triggers/%d", url.QueryEscape(project), trigger)
+	u := fmt.Sprintf("projects/%s/triggers/%d", pathEscape(project), trigger)
 
 	req, err := s.client.NewRequest("DELETE", u, nil, options)
 	if err != nil {
@@ -196,4 +193,39 @@ func (s *PipelineTriggersService) DeletePipelineTrigger(pid interface{}, trigger
 	}
 
 	return s.client.Do(req, nil)
+}
+
+// RunPipelineTriggerOptions represents the available RunPipelineTrigger() options.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/ci/triggers/README.html#triggering-a-pipeline
+type RunPipelineTriggerOptions struct {
+	Ref       *string           `url:"ref" json:"ref"`
+	Token     *string           `url:"token" json:"token"`
+	Variables map[string]string `url:"variables,omitempty" json:"variables,omitempty"`
+}
+
+// RunPipelineTrigger starts a trigger from a project.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/ci/triggers/README.html#triggering-a-pipeline
+func (s *PipelineTriggersService) RunPipelineTrigger(pid interface{}, opt *RunPipelineTriggerOptions, options ...OptionFunc) (*Pipeline, *Response, error) {
+	project, err := parseID(pid)
+	if err != nil {
+		return nil, nil, err
+	}
+	u := fmt.Sprintf("projects/%s/trigger/pipeline", pathEscape(project))
+
+	req, err := s.client.NewRequest("POST", u, opt, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pt := new(Pipeline)
+	resp, err := s.client.Do(req, pt)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return pt, resp, err
 }

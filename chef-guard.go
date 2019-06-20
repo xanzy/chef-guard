@@ -38,7 +38,7 @@ import (
 )
 
 // VERSION holds the current version
-const VERSION = "0.7.2"
+const VERSION = "0.7.3"
 
 var chefKey string
 
@@ -164,6 +164,7 @@ func main() {
 	}
 
 	rtr.NotFoundHandler = p
+	rtr.MethodNotAllowedHandler = p
 	http.Handle("/", rtr)
 
 	// Start the server

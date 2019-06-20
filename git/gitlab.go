@@ -232,7 +232,7 @@ func (g *GitLab) GetDiff(project, user, sha string) (string, error) {
 func (g *GitLab) GetArchiveLink(project, tag string) (*url.URL, error) {
 	ns := fmt.Sprintf("%s/%s", g.group, project)
 
-	_, resp, err := g.client.Projects.GetProject(ns)
+	_, resp, err := g.client.Projects.GetProject(ns, nil)
 	if err != nil {
 		if resp != nil {
 			switch resp.StatusCode {
@@ -284,7 +284,7 @@ func (g *GitLab) TagRepo(project, tag string, usr *User) error {
 func (g *GitLab) TagExists(project, tag string) (bool, error) {
 	ns := fmt.Sprintf("%s/%s", g.group, project)
 
-	tags, resp, err := g.client.Tags.ListTags(ns)
+	_, resp, err := g.client.Tags.GetTag(ns, tag)
 	if err != nil {
 		if resp != nil {
 			switch resp.StatusCode {
@@ -297,13 +297,7 @@ func (g *GitLab) TagExists(project, tag string) (bool, error) {
 		return false, fmt.Errorf("Error retrieving tags of project %s: %v", project, err)
 	}
 
-	for _, t := range tags {
-		if t.Name == tag {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return true, nil
 }
 
 // UntagRepo implements the Git interface
