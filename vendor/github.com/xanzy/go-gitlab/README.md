@@ -2,8 +2,12 @@
 
 A GitLab API client enabling Go programs to interact with GitLab in a simple and uniform way
 
-**Documentation:** [![GoDoc](https://godoc.org/github.com/xanzy/go-gitlab?status.svg)](https://godoc.org/github.com/xanzy/go-gitlab)
-**Build Status:** [![Build Status](https://travis-ci.org/xanzy/go-gitlab.svg?branch=master)](https://travis-ci.org/xanzy/go-gitlab)
+[![Build Status](https://travis-ci.org/xanzy/go-gitlab.svg?branch=master)](https://travis-ci.org/xanzy/go-gitlab)
+[![GitHub license](https://img.shields.io/github/license/xanzy/go-gitlab.svg)](https://github.com/xanzy/go-gitlab/blob/master/LICENSE)
+[![Sourcegraph](https://sourcegraph.com/github.com/xanzy/go-gitlab/-/badge.svg)](https://sourcegraph.com/github.com/xanzy/go-gitlab?badge)
+[![GoDoc](https://godoc.org/github.com/xanzy/go-gitlab?status.svg)](https://godoc.org/github.com/xanzy/go-gitlab)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xanzy/go-gitlab)](https://goreportcard.com/report/github.com/xanzy/go-gitlab)
+[![GitHub issues](https://img.shields.io/github/issues/xanzy/go-gitlab.svg)](https://github.com/xanzy/go-gitlab/issues)
 
 ## NOTE
 
@@ -13,30 +17,73 @@ incompatible changes that were needed to fully support the V4 Gitlab API.
 
 ## Coverage
 
-This API client package covers **100%** of the existing GitLab API calls! So this
-includes all calls to the following services:
+This API client package covers most of the existing Gitlab API calls and is updated regularly
+to add new and/or missing endpoints. Currently the following services are supported:
 
-- [x] Users
-- [x] Session
-- [x] Projects (including setting Webhooks)
+- [ ] Discussions (threaded comments)
+- [ ] Epic Issues
+- [ ] Epics
+- [ ] Geo Nodes
+- [x] Award Emojis
+- [x] Branches
+- [x] Broadcast Messages
+- [x] Commits
+- [x] Container Registry
+- [x] Custom Attributes
+- [x] Deploy Keys
+- [x] Deployments
+- [x] Environments
+- [x] Events
+- [x] Feature Flags
+- [x] GitLab CI Config Templates
+- [x] Gitignores Templates
+- [x] Group Access Requests
+- [x] Group Issue Boards
+- [x] Group Members
+- [x] Group Milestones
+- [x] Group-Level Variables
+- [x] Groups
+- [x] Issue Boards
+- [x] Issues
+- [x] Jobs
+- [x] Keys
+- [x] Labels
+- [x] License
+- [x] Merge Request Approvals
+- [x] Merge Requests
+- [x] Namespaces
+- [x] Notes (comments)
+- [x] Notification Settings
+- [x] Open Source License Templates
+- [x] Pages Domains
+- [x] Pipeline Schedules
+- [x] Pipeline Triggers
+- [x] Pipelines
+- [x] Project Access Requests
+- [x] Project Badges
+- [x] Project Clusters
+- [x] Project Import/export
+- [x] Project Members
+- [x] Project Milestones
 - [x] Project Snippets
-- [x] Services
+- [x] Project-Level Variables
+- [x] Projects (including setting Webhooks)
+- [x] Protected Branches
+- [x] Protected Tags
 - [x] Repositories
 - [x] Repository Files
-- [x] Commits
-- [x] Branches
-- [x] Merge Requests
-- [x] Issues
-- [x] Labels
-- [x] Milestones
-- [x] Notes (comments)
-- [x] Deploy Keys
-- [x] System Hooks
-- [x] Groups
-- [x] Namespaces
+- [x] Runners
+- [x] Search
+- [x] Services
 - [x] Settings
-- [x] Pipelines
+- [x] Sidekiq Metrics
+- [x] System Hooks
+- [x] Tags
+- [x] Todos
+- [x] Users
+- [x] Validate CI Configuration
 - [x] Version
+- [x] Wikis
 
 ## Usage
 
@@ -86,7 +133,7 @@ func main() {
 		Description:          gitlab.String("Just a test project to play with"),
 		MergeRequestsEnabled: gitlab.Bool(true),
 		SnippetsEnabled:      gitlab.Bool(true),
-		Visibility:           gitlab.VisibilityLevel(gitlab.PublicVisibility),
+		Visibility:           gitlab.Visibility(gitlab.PublicVisibility),
 	}
 	project, _, err := git.Projects.CreateProject(p)
 	if err != nil {
@@ -94,18 +141,17 @@ func main() {
 	}
 
 	// Add a new snippet
-	s := &gitlab.CreateSnippetOptions{
+	s := &gitlab.CreateProjectSnippetOptions{
 		Title:           gitlab.String("Dummy Snippet"),
 		FileName:        gitlab.String("snippet.go"),
 		Code:            gitlab.String("package main...."),
-		Visibility:      gitlab.VisibilityLevel(gitlab.PublicVisibility),
+		Visibility:      gitlab.Visibility(gitlab.PublicVisibility),
 	}
 	_, _, err = git.ProjectSnippets.CreateSnippet(project.ID, s)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
-
 ```
 
 For complete usage of go-gitlab, see the full [package docs](https://godoc.org/github.com/xanzy/go-gitlab).

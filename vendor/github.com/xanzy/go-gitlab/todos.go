@@ -67,12 +67,12 @@ type TodoTarget struct {
 	Weight       int    `json:"weight"`
 
 	// Only available for type MergeRequest
-	ApprovalsBeforeMerge      bool   `json:"approvals_before_merge"`
+	ApprovalsBeforeMerge      int    `json:"approvals_before_merge"`
 	ForceRemoveSourceBranch   bool   `json:"force_remove_source_branch"`
-	MergeCommitSha            string `json:"merge_commit_sha"`
+	MergeCommitSHA            string `json:"merge_commit_sha"`
 	MergeWhenPipelineSucceeds bool   `json:"merge_when_pipeline_succeeds"`
 	MergeStatus               string `json:"merge_status"`
-	Sha                       string `json:"sha"`
+	SHA                       string `json:"sha"`
 	ShouldRemoveSourceBranch  bool   `json:"should_remove_source_branch"`
 	SourceBranch              string `json:"source_branch"`
 	SourceProjectID           int    `json:"source_project_id"`

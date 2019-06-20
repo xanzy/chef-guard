@@ -164,6 +164,7 @@ func main() {
 	}
 
 	rtr.NotFoundHandler = p
+	rtr.MethodNotAllowedHandler = p
 	http.Handle("/", rtr)
 
 	// Start the server

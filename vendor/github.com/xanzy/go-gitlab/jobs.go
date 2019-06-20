@@ -20,15 +20,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/url"
 	"time"
 )
-
-// ListJobsOptions are options for two list apis
-type ListJobsOptions struct {
-	ListOptions
-	Scope []BuildState `url:"scope,omitempty" json:"scope,omitempty"`
-}
 
 // JobsService handles communication with the ci builds related methods
 // of the GitLab API.
@@ -44,6 +37,7 @@ type JobsService struct {
 type Job struct {
 	Commit        *Commit    `json:"commit"`
 	CreatedAt     *time.Time `json:"created_at"`
+	Coverage      float64    `json:"coverage"`
 	ArtifactsFile struct {
 		Filename string `json:"filename"`
 		Size     int    `json:"size"`
@@ -51,8 +45,14 @@ type Job struct {
 	FinishedAt *time.Time `json:"finished_at"`
 	ID         int        `json:"id"`
 	Name       string     `json:"name"`
-	Ref        string     `json:"ref"`
-	Runner     struct {
+	Pipeline   struct {
+		ID     int    `json:"id"`
+		Ref    string `json:"ref"`
+		Sha    string `json:"sha"`
+		Status string `json:"status"`
+	} `json:"pipeline"`
+	Ref    string `json:"ref"`
+	Runner struct {
 		ID          int    `json:"id"`
 		Description string `json:"description"`
 		Active      bool   `json:"active"`
@@ -64,6 +64,13 @@ type Job struct {
 	Status    string     `json:"status"`
 	Tag       bool       `json:"tag"`
 	User      *User      `json:"user"`
+	WebURL    string     `json:"web_url"`
+}
+
+// ListJobsOptions are options for two list apis
+type ListJobsOptions struct {
+	ListOptions
+	Scope []BuildStateValue `url:"scope[],omitempty" json:"scope,omitempty"`
 }
 
 // ListProjectJobs gets a list of jobs in a project.
@@ -78,7 +85,7 @@ func (s *JobsService) ListProjectJobs(pid interface{}, opts *ListJobsOptions, op
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs", url.QueryEscape(project))
+	u := fmt.Sprintf("projects/%s/jobs", pathEscape(project))
 
 	req, err := s.client.NewRequest("GET", u, opts, options)
 	if err != nil {
@@ -99,19 +106,19 @@ func (s *JobsService) ListProjectJobs(pid interface{}, opts *ListJobsOptions, op
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/jobs.html#list-pipeline-jobs
-func (s *JobsService) ListPipelineJobs(pid interface{}, pipelineID int, opts *ListJobsOptions, options ...OptionFunc) ([]Job, *Response, error) {
+func (s *JobsService) ListPipelineJobs(pid interface{}, pipelineID int, opts *ListJobsOptions, options ...OptionFunc) ([]*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/pipelines/%d/jobs", project, pipelineID)
+	u := fmt.Sprintf("projects/%s/pipelines/%d/jobs", pathEscape(project), pipelineID)
 
 	req, err := s.client.NewRequest("GET", u, opts, options)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var jobs []Job
+	var jobs []*Job
 	resp, err := s.client.Do(req, &jobs)
 	if err != nil {
 		return nil, resp, err
@@ -129,7 +136,7 @@ func (s *JobsService) GetJob(pid interface{}, jobID int, options ...OptionFunc) 
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {
@@ -154,7 +161,7 @@ func (s *JobsService) GetJobArtifacts(pid interface{}, jobID int, options ...Opt
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d/artifacts", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d/artifacts", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {
@@ -170,19 +177,28 @@ func (s *JobsService) GetJobArtifacts(pid interface{}, jobID int, options ...Opt
 	return artifactsBuf, resp, err
 }
 
+// DownloadArtifactsFileOptions represents the available DownloadArtifactsFile()
+// options.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/api/jobs.html#download-the-artifacts-file
+type DownloadArtifactsFileOptions struct {
+	Job *string `url:"job" json:"job"`
+}
+
 // DownloadArtifactsFile download the artifacts file from the given
 // reference name and job provided the job finished successfully.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/jobs.html#download-the-artifacts-file
-func (s *JobsService) DownloadArtifactsFile(pid interface{}, refName string, job string, options ...OptionFunc) (io.Reader, *Response, error) {
+func (s *JobsService) DownloadArtifactsFile(pid interface{}, refName string, opt *DownloadArtifactsFileOptions, options ...OptionFunc) (io.Reader, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/artifacts/%s/download?job=%s", project, refName, job)
+	u := fmt.Sprintf("projects/%s/jobs/artifacts/%s/download", pathEscape(project), refName)
 
-	req, err := s.client.NewRequest("GET", u, nil, options)
+	req, err := s.client.NewRequest("GET", u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -194,6 +210,40 @@ func (s *JobsService) DownloadArtifactsFile(pid interface{}, refName string, job
 	}
 
 	return artifactsBuf, resp, err
+}
+
+// DownloadSingleArtifactsFile download a file from the artifacts from the
+// given reference name and job provided the job finished successfully.
+// Only a single file is going to be extracted from the archive and streamed
+// to a client.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/api/jobs.html#download-a-single-artifact-file
+func (s *JobsService) DownloadSingleArtifactsFile(pid interface{}, jobID int, artifactPath string, options ...OptionFunc) (io.Reader, *Response, error) {
+	project, err := parseID(pid)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	u := fmt.Sprintf(
+		"projects/%s/jobs/%d/artifacts/%s",
+		pathEscape(project),
+		jobID,
+		artifactPath,
+	)
+
+	req, err := s.client.NewRequest("GET", u, nil, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	artifactBuf := new(bytes.Buffer)
+	resp, err := s.client.Do(req, artifactBuf)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return artifactBuf, resp, err
 }
 
 // GetTraceFile gets a trace of a specific job of a project
@@ -205,7 +255,7 @@ func (s *JobsService) GetTraceFile(pid interface{}, jobID int, options ...Option
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d/trace", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d/trace", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("GET", u, nil, options)
 	if err != nil {
@@ -230,7 +280,7 @@ func (s *JobsService) CancelJob(pid interface{}, jobID int, options ...OptionFun
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d/cancel", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d/cancel", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("POST", u, nil, options)
 	if err != nil {
@@ -255,7 +305,7 @@ func (s *JobsService) RetryJob(pid interface{}, jobID int, options ...OptionFunc
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d/retry", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d/retry", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("POST", u, nil, options)
 	if err != nil {
@@ -281,7 +331,7 @@ func (s *JobsService) EraseJob(pid interface{}, jobID int, options ...OptionFunc
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d/erase", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d/erase", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("POST", u, nil, options)
 	if err != nil {
@@ -307,7 +357,7 @@ func (s *JobsService) KeepArtifacts(pid interface{}, jobID int, options ...Optio
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d/artifacts/keep", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d/artifacts/keep", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("POST", u, nil, options)
 	if err != nil {
@@ -323,7 +373,7 @@ func (s *JobsService) KeepArtifacts(pid interface{}, jobID int, options ...Optio
 	return job, resp, err
 }
 
-// PlayJob triggers a nanual action to start a job.
+// PlayJob triggers a manual action to start a job.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/ce/api/jobs.html#play-a-job
@@ -332,7 +382,7 @@ func (s *JobsService) PlayJob(pid interface{}, jobID int, options ...OptionFunc)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("projects/%s/jobs/%d/play", project, jobID)
+	u := fmt.Sprintf("projects/%s/jobs/%d/play", pathEscape(project), jobID)
 
 	req, err := s.client.NewRequest("POST", u, nil, options)
 	if err != nil {
