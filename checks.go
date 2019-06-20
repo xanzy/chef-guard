@@ -86,8 +86,8 @@ func getFoodcriticArgs(org, cookbookPath string) []string {
 		excludes = fmt.Sprintf("%s,%s", excludes, custExcludes)
 	}
 	args := []string{}
-	if excludes != "" {
-		args = append(args, "--tags", "~"+strings.Replace(excludes, ",", ",~", -1))
+	for _, exclude := range strings.Split(excludes, ",") {
+		args = append(args, "--tags", "~"+exclude)
 	}
 	if cfg.Default.IncludeFCs != "" {
 		args = append(args, "--include", cfg.Default.IncludeFCs)
