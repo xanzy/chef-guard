@@ -28,7 +28,7 @@ _Please read the [docs](http://xanzy.io/projects/chef-guard) first!_
 
 ## Author
 
-Sander van Harmelen (<sander@xanzy.io>)
+Sander van Harmelen (<sander@vanharmelen.nl>)
 
 ## License
 
