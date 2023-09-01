@@ -1,6 +1,10 @@
 Chef-Guard CHANGELOG
 ====================
 
+0.7.4
+------------------
+- Ignore files under the `test/` directory
+
 0.7.3
 ------------------
 - Switch to using Go modules, but still vendor (`go mod vendor`) for backwards compatibility
